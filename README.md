@@ -10,13 +10,14 @@ https://papers.nips.cc/paper/5788-training-restricted-boltzmann-machine-via-the-
 see also:
 https://github.com/dfdx/Boltzmann.jl/issues/9
 
-*Getting Started
+##Getting Started
 
 Install Julia and check out the Bolztmann code listed above
 
-run
-
-julia mnist_h5.jl
+run `julia mnist_h5.jl`
 
 to generate the sample data sets for the notebook
 
+##Notebook
+
+Just run the notebook; I am current debugging and comparing the result to the julia mnistexample.jl output
