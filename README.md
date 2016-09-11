@@ -21,3 +21,9 @@ to generate the sample data sets for the notebook
 ##Notebook
 
 Just run the notebook; I am current debugging and comparing the result to the julia mnistexample.jl output
+
+##TODO
+
+Testing and Evaluating the RBM
+
+see: https://www.quora.com/Is-there-any-other-dataset-except-MNIST-that-is-suitable-for-RBM-DBN-Since-Many-deep-learning-libraries-and-tutorials-use-only-MNIST-dataset-for-RBM
