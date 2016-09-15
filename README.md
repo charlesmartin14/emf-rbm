@@ -14,6 +14,16 @@ https://github.com/dfdx/Boltzmann.jl/issues/9
 
 Install Julia and check out the Bolztmann code listed above
 
+Julia will be installed, by default, in
+
+~/.julia
+
+and the Boltzmann RBM package in
+
+~/.julia/v0.4/Boltzmann
+
+We need to run
+
 run `julia mnist_h5.jl`
 
 to generate the sample data sets for the notebook
