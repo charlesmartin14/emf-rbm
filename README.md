@@ -37,3 +37,5 @@ Just run the notebook; I am current debugging and comparing the result to the ju
 Testing and Evaluating the RBM
 
 see: https://www.quora.com/Is-there-any-other-dataset-except-MNIST-that-is-suitable-for-RBM-DBN-Since-Many-deep-learning-libraries-and-tutorials-use-only-MNIST-dataset-for-RBM
+
+The mnist_h5 data set has been normalized and binarized
