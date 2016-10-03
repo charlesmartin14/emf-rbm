@@ -17,7 +17,7 @@ from sklearn.utils.fixes import expit  # logistic function
 from sklearn.utils.extmath import safe_sparse_dot, log_logistic
 
 class EMF_RBM(BaseEstimator, TransformerMixin):
-    \\\Extended Mean Field Restricted Boltzmann Machine (RBM).
+    """Extended Mean Field Restricted Boltzmann Machine (RBM).
     A Restricted Boltzmann Machine with binary visible units and
     binary hidden units. Parameters are estimated using the Extended Mean
     Field model, based on the TAP equations
@@ -76,7 +76,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
     [1] Marylou Gabrie´, Eric W. Tramel1 and Florent Krzakala1, 
         Training Restricted Boltzmann Machines via the Thouless-Anderson-Palmer Free Energy
         https://arxiv.org/pdf/1506.02914
-    \\\
+    """
     def __init__(self, n_components=256, learning_rate=0.005, batch_size=100, sigma=0.001, neq_steps = 3,
                  n_iter=20, verbose=0, random_state=None, momentum = 0.5, decay = 0.01, weight_decay='L1', thresh=1e-8):
         self.n_components = n_components
@@ -124,13 +124,13 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         self.v_bias = self.init_v_bias(X)
 
     def init_v_bias(self, X):
-        \\\ If the user specifies the training dataset, it can be useful to                                                                                   
+        """ If the user specifies the training dataset, it can be useful to                                                                                   
         initialize the visibile biases according to the empirical expected                                                                                
         feature values of the training data.                                                                                                              
 
         TODO: Generalize this biasing. Currently, the biasing is only written for                                                                         
                the case of binary RBMs.
-        \\\
+        """
         # 
         eps = self.thresh
 
@@ -142,12 +142,12 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
 
 
     def sample_layer(self, layer):
-        \\\Sample from the conditional distribution P(h|v) or P(v|h)\\\
+        """Sample from the conditional distribution P(h|v) or P(v|h)"""
         self.random_state = check_random_state(self.random_state)
         return (self.random_state.random_sample(size=l.shape) < layer)  
 
     def _sample_hiddens(self, v):
-        \\\Sample from the conditional distribution P(h|v).
+        """Sample from the conditional distribution P(h|v).
         Parameters
         ----------
         v : array-like, shape (n_samples, n_features)
@@ -156,11 +156,11 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         -------
         h : array-like, shape (n_samples, n_components)
             Values of the hidden layer.
-        \\\
+        """
         return sample_layer(self._mean_hiddens(v))
 
     def _mean_hiddens(self, v):
-        \\\Computes the conditional probabilities P(h=1|v).
+        """Computes the conditional probabilities P(h=1|v).
         Parameters
         ----------
         v : array-like, shape (n_samples, n_features)
@@ -169,12 +169,12 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         -------
         h : array-like, shape (n_samples, n_components)
             Corresponding mean field values for the hidden layer.
-        \\\
+        """
         p = safe_sparse_dot(v, self.W.T) + self.h_bias
         return expit(p, out=p)
 
     def _sample_visibles(self, h):
-        \\\Sample from the distribution P(v|h).
+        """Sample from the distribution P(v|h).
         Parameters
         ----------
         h : array-like, shape (n_samples, n_components)
@@ -183,11 +183,11 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         -------
         v : array-like, shape (n_samples, n_features)
             Values of the visible layer.
-        \\\
+        """
         return sample_layer(self._mean_visible(h))
 
     def _mean_visibles(self, h):
-        \\\Computes the conditional probabilities P(v=1|h).
+        """Computes the conditional probabilities P(v=1|h).
         Parameters
         ----------
         h : array-like, shape (n_samples, n_components)
@@ -196,17 +196,17 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         -------
          v : array-like, shape (n_samples, n_features)
             Values of the visible layer.     
-        \\\
+        """
         p = np.dot(h, self.W) + self.v_bias
         return expit(p, out=p)
 
     def sigma_means(self, x, b, W):
-        \\\helper class for computing Wx+b \\\
+        """helper class for computing Wx+b """
         a = safe_sparse_dot(x, W.T) + b
         return expit(a, out=a)
 
     def init_batch(self, vis):
-        \\\initialize the batch for EMF only\\\
+        """initialize the batch for EMF only"""
         v_pos = vis
         v_init = v_pos
 
@@ -216,7 +216,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         return v_pos, h_pos, v_init, h_init
 
     def equilibrate(self, v0, h0, iters=3):
-        \\\Run iters steps of the TAP fixed point equations\\\
+        """Run iters steps of the TAP fixed point equations"""
         mv = v0
         mh = h0
         for i in range(iters):
@@ -226,7 +226,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         return mv, mh
 
     def mv_update(self, v, h):  
-        \\\update TAP visbile magnetizations, to second order\\\
+        """update TAP visbile magnetizations, to second order"""
         a = np.dot(h, self.W) + self.v_bias
 
         h_fluc = h-(h*h)
@@ -234,7 +234,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         return expit(a, out=a)
 
     def mh_update(self, v, h):
-        \\\update TAP hidden magnetizations, to second order\\\
+        """update TAP hidden magnetizations, to second order"""
         a = safe_sparse_dot(v, self.W.T) + self.h_bias
 
         v_fluc = v-(v*v)
@@ -243,7 +243,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
 
 
     def weight_gradient(self, v_pos, h_pos ,v_neg, h_neg):
-        \\\compute weight gradient of the TAP Free Energy, to second order\\\
+        """compute weight gradient of the TAP Free Energy, to second order"""
         # naive  / mean field
         dW = safe_sparse_dot(v_pos.T, h_pos, dense_output=True).T - np.dot(h_neg.T, v_neg)
 
@@ -256,7 +256,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         return dW
 
     def score_samples(self, X):
-        \\\Compute the pseudo-likelihood of X.
+        """Compute the pseudo-likelihood of X.
         Parameters
         ----------
         X : {array-like, sparse matrix} shape (n_samples, n_features)
@@ -270,7 +270,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         This method is not deterministic: it computes the TAP Free Energy on X,
         then on a randomly corrupted version of X, and
         returns the log of the logistic function of the difference.
-        \\\
+        """
         check_is_fitted(self, \W\)
 
         v = check_array(X, accept_sparse='csr')
@@ -292,13 +292,13 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
 
     #TODO: fix later
     def _denoise(m, eps=1e-8):
-        \\\denoise magnetization\\\
+        """denoise magnetization"""
       #  m[m < eps] = eps
         return m
 
 
     def _free_energy(self, v):
-        \\\Computes the TAP Free Energy F(v) to second order
+        """Computes the TAP Free Energy F(v) to second order
         Parameters
         ----------
         v : array-like, shape (n_samples, n_features)
@@ -307,7 +307,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         -------
         free_energy : array-like, shape (n_samples,)
             The value of the free energy.
-        \\\
+        """
         fe = (- safe_sparse_dot(v, self.v_bias)
                 - np.logaddexp(0, safe_sparse_dot(v, self.W.T)
                                + self.h_bias).sum(axis=1))
@@ -344,7 +344,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
 
 
     def partial_fit(self, X, y=None):
-        \\\Fit the model to the data X which should contain a partial
+        """Fit the model to the data X which should contain a partial
         segment of the data.
         Parameters
         ----------
@@ -354,7 +354,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         -------
         self : EMF_RBM
             The fitted model.
-        \\\
+        """
         X = check_array(X, accept_sparse='csr', dtype=np.float64)
         if not hasattr(self, 'random_state_'):
             self.random_state_ = check_random_state(self.random_state)
@@ -378,14 +378,14 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         self._fit(X, self.random_state_)
 
     def _fit(self, v_pos):
-        \\\Inner fit for one mini-batch.
+        """Inner fit for one mini-batch.
         Adjust the parameters to maximize the likelihood of v using
         Extended Mean Field theory (second order TAP equations).
         Parameters
         ----------
         v_pos : array-like, shape (n_samples, n_features)
             The data to use for training.
-        \\\
+        """
         X_batch = v_pos
         lr = float(self.learning_rate) / X_batch.shape[0]
         decay = self.decay
@@ -425,7 +425,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
 
     
     def fit(self, X, y=None):
-        \\\Fit the model to the data X.
+        """Fit the model to the data X.
         Parameters
         ----------
         X : {array-like, sparse matrix} shape (n_samples, n_features)
@@ -434,7 +434,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         -------
         self : BernoulliRBM
             The fitted model.
-        \\\
+        """
         verbose = self.verbose
         X = check_array(X, accept_sparse='csr', dtype=np.float64)
         self.random_state = check_random_state(self.random_state)
