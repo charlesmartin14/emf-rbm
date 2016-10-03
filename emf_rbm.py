@@ -52,7 +52,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         The verbosity level. The default, zero, means silent mode.
     random_state : integer or numpy.RandomState, optional
         A random number generator instance to define the state of the
-        random permutations generator. If an integer is give it fixes the
+        random permutations generator. If an integer is given, it fixes the
         seed. Defaults to the global numpy random number generator.
     Attributes
     ----------
@@ -271,7 +271,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         then on a randomly corrupted version of X, and
         returns the log of the logistic function of the difference.
         """
-        check_is_fitted(self, \W\)
+        check_is_fitted(self, "W")
 
         v = check_array(X, accept_sparse='csr')
         self.random_state = check_random_state(self.random_state)
@@ -320,7 +320,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         #mh = self._denoise(mh)
 
         # sum over nodes: axis=1
-        print \mv mh W2 shapes\, mv.shape, mh.shape, self.W2.shape
+        print "mv mh W2 shapes", mv.shape, mh.shape, self.W2.shape
         
         U_naive = (-safe_sparse_dot(mv, self.v_bias) 
                     -safe_sparse_dot(mh, self.h_bias) 
@@ -333,7 +333,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         v_fluc = (mv - (mv*mv))
         dW_tap2 = h_fluc.dot(self.W2).dot(v_fluc.T)
         
-        print \U_naive, Entropy, dW_tap2\, U_naive.shape,Entropy.shape, dW_tap2.shape
+        print "U_naive, Entropy, dW_tap2", U_naive.shape,Entropy.shape, dW_tap2.shape
 
         Onsager = - (0.5 * dW_tap2).sum(axis=1)
         
@@ -400,9 +400,9 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
 
         # regularization based on weight decay
         #  similar to momentum >
-        if rbm.weight_decay == \L2\:
+        if rbm.weight_decay == "L2":
             dW += decay * np.sign(self.W)
-        elif rbm.weight_decay == \L1\:
+        elif rbm.weight_decay == "L1":
             dW += decay * self.W
 
         # can we use BLAS here ?
@@ -448,16 +448,15 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         begin = time.time()
         for iteration in xrange(1, self.n_iter + 1):
             for batch_slice in batch_slices:
-                print \.\,
+                print ".",
                 self._fit(X[batch_slice])
 
             if verbose:
                 end = time.time()
-                print(\[%s] Iteration %d, pseudo-likelihood = %.2f,\
-                      \ time = %.2fs\
-                      % (type(self).__name__, iteratio
+                print("[%s] Iteration %d, pseudo-likelihood = %.2f,"
+                      " time = %.2fs"
+                      % (type(self).__name__, iteration,
                          self.score_samples(X).mean(), end - begin))
                 begin = end
 
         return self
-
