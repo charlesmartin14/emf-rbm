@@ -1,3 +1,4 @@
+
 import time
 
 import numpy as np
@@ -14,7 +15,7 @@ from sklearn.utils import issparse
 from sklearn.utils.validation import check_is_fitted
 
 from sklearn.utils.fixes import expit  # logistic function  
-from sklearn.utils.extmath import safe_sparse_dot, log_logistic
+from sklearn.utils.extmath import safe_sparse_dot, log_logistic, softmax
 
 class EMF_RBM(BaseEstimator, TransformerMixin):
     """Extended Mean Field Restricted Boltzmann Machine (RBM).
@@ -105,25 +106,19 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         # self.random_state_ = random_state
         # always start with new random state
         self.random_state = check_random_state(random_state)
-
-
-        # initialize arrays to 0
-        self.W = np.asarray(
-            self.random_state.normal(
-                0,
-                sigma,
-                (self.n_components, X.shape[1])
-            ),
-            order='fortran')
-
-        self.dW_prev = np.zeros_like(self.W)
-        self.W2 = self.W*self.W
-
+        
+        # h bias
         self.h_bias = np.zeros(self.n_components, )
         self.h_samples_ = np.zeros((self.batch_size, self.n_components))
-        self.v_bias = self.init_v_bias(X)
+        # moved to fit
+        
+        self.W = None
+        self.dW_prev = None
+        self.W2 = None
+        self.v_bias = None
+        
 
-    def init_v_bias(self, X):
+    def init_weights(self, X):
         """ If the user specifies the training dataset, it can be useful to                                                                                   
         initialize the visibile biases according to the empirical expected                                                                                
         feature values of the training data.                                                                                                              
@@ -134,17 +129,40 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         # 
         eps = self.thresh
 
-        probVis = np.mean(X,axis=0)             # Mean across  samples 
+        # Mean across  samples 
+        if issparse(X):
+            probVis = csr_matrix.mean(X, axis=0)
+        else:
+            probVis = np.mean(X,axis=0)            
+
+        # safe for CSR / sparse mats ?
+        # do we need it if we use softmax ?
         probVis[probVis < eps] = eps            # Some regularization (avoid Inf/NaN)  
         #probVis[probVis < (1.0-eps)] = (1.0-eps)   
-        v_bias = np.log(probVis / (1.0-probVis)) # Biasing as the log-proportion  
-        return v_bias
+        self.v_bias = np.log(probVis / (1.0-probVis)) # Biasing as the log-proportion
+        
+        # (does not work)
+        # self.v_bias = softmax(probVis)
+        
+        # initialize arrays to 0
+        self.W = np.asarray(
+            self.random_state.normal(
+                0,
+                self.sigma,
+                (self.n_components, X.shape[1])
+            ),
+            order='fortran')
+
+        self.dW_prev = np.zeros_like(self.W)
+        self.W2 = self.W*self.W
+        return 0
 
 
     def sample_layer(self, layer):
         """Sample from the conditional distribution P(h|v) or P(v|h)"""
         self.random_state = check_random_state(self.random_state)
-        return (self.random_state.random_sample(size=l.shape) < layer)  
+        sample = (self.random_state.random_sample(size=layer.shape) < layer) 
+        return sample
 
     def _sample_hiddens(self, v):
         """Sample from the conditional distribution P(h|v).
@@ -157,7 +175,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         h : array-like, shape (n_samples, n_components)
             Values of the hidden layer.
         """
-        return sample_layer(self._mean_hiddens(v))
+        return self.sample_layer(self._mean_hiddens(v))
 
     def _mean_hiddens(self, v):
         """Computes the conditional probabilities P(h=1|v).
@@ -197,7 +215,8 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
          v : array-like, shape (n_samples, n_features)
             Values of the visible layer.     
         """
-        p = np.dot(h, self.W) + self.v_bias
+        #p = np.dot(h, self.W) + self.v_bias
+        p = safe_sparse_dot(h, W) + self.v_bias
         return expit(p, out=p)
 
     def sigma_means(self, x, b, W):
@@ -219,26 +238,30 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         """Run iters steps of the TAP fixed point equations"""
         mv = v0
         mh = h0
+     
         for i in range(iters):
             mv = 0.5 *self.mv_update(mv, mh) + 0.5*mv
             mh = 0.5 *self.mh_update(mv, mh) + 0.5*mh
-
         return mv, mh
 
     def mv_update(self, v, h):  
         """update TAP visbile magnetizations, to second order"""
-        a = np.dot(h, self.W) + self.v_bias
+        
+        # a = np.dot(h, self.W) + self.v_bias
+        a = safe_sparse_dot(h, self.W) + self.v_bias
 
         h_fluc = h-(h*h)
         a += h_fluc.dot(self.W2)*(0.5-v)
+        #a += safe_sparse_dot(h_fluc,self.W2)*(0.5-v)
         return expit(a, out=a)
 
     def mh_update(self, v, h):
         """update TAP hidden magnetizations, to second order"""
         a = safe_sparse_dot(v, self.W.T) + self.h_bias
 
-        v_fluc = v-(v*v)
-        a += v_fluc.dot(self.W2.T)*(0.5-h)
+        v_fluc = (v-(v*v))
+        a += v_fluc.dot((self.W2).T)*(0.5-h)
+        #a += safe_sparse_dot(v_fluc,self.W2.T)*(0.5-h)
         return expit(a, out=a)
 
 
@@ -246,11 +269,12 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         """compute weight gradient of the TAP Free Energy, to second order"""
         # naive  / mean field
         dW = safe_sparse_dot(v_pos.T, h_pos, dense_output=True).T - np.dot(h_neg.T, v_neg)
-
+        
         # tap2 correction
         h_fluc = (h_neg - (h_neg*h_neg)).T
         v_fluc = (v_neg - (v_neg*v_neg))
-        dW_tap2 = h_fluc.dot(v_fluc)*self.W
+        #  dW_tap2 = h_fluc.dot(v_fluc)*self.W
+        dW_tap2 = safe_sparse_dot(h_fluc,v_fluc)*self.W
 
         dW -= dW_tap2
         return dW
@@ -274,9 +298,41 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         check_is_fitted(self, "W")
 
         v = check_array(X, accept_sparse='csr')
-        self.random_state = check_random_state(self.random_state)
+        v, v_ = self._corrupt_data(v)       
 
-        # Randomly corrupt one feature in each sample in v.
+        fe = self._free_energy(v)
+        fe_ = self._free_energy(v_)
+        return v.shape[1] * log_logistic(fe_ - fe)
+    
+    
+    def score_samples_TAP(self, X):
+        """Compute the pseudo-likelihood of X using second order TAP
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} shape (n_samples, n_features)
+            Values of the visible layer. Must be all-boolean (not checked).
+        Returns
+        -------
+        pseudo_likelihood : array-like, shape (n_samples,)
+            Value of the pseudo-likelihood (proxy for likelihood).
+        Notes
+        -----
+        This method is not deterministic: it computes the TAP Free Energy on X,
+        then on a randomly corrupted version of X, and
+        returns the log of the logistic function of the difference.
+        """
+        check_is_fitted(self, "W")
+
+        v = check_array(X, accept_sparse='csr')      
+        v, v_ = self._corrupt_data(v)       
+
+        fe = self._free_energy_TAP(v)
+        fe_ = self._free_energy_TAP(v_)
+        return v.shape[1] * log_logistic(fe_ - fe)
+    
+    def _corrupt_data(self, v):
+        self.random_state = check_random_state(self.random_state)
+        """Randomly corrupt one feature in each sample in v."""
         ind = (np.arange(v.shape[0]),
                self.random_state.randint(0, v.shape[1], v.shape[0]))
         if issparse(v):
@@ -285,19 +341,43 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         else:
             v_ = v.copy()
             v_[ind] = 1 - v_[ind]
+        return v, v_
+    
+    
+    def score_samples_entropy(self, X):
+        """Compute the entropy of X
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} shape (n_samples, n_features)
+            Values of the visible layer. Must be all-boolean (not checked).
+        Returns
+        -------
+        entropy : array-like, shape (n_samples,)
+            Value of the entropy.
+        Notes
+        -----
+        This method is not deterministic: it computes the entropy on X,
+        then on a randomly corrupted version of X, and returns the difference.
+        """
+        check_is_fitted(self, "W")
 
-        fe = self._free_energy(v)
-        fe_ = self._free_energy(v_)
-        return v.shape[1] * log_logistic(fe_ - fe)
+        v = check_array(X, accept_sparse='csr')
+        v, v_ = self._corrupt_data(v)       
 
-    #TODO: fix later
-    def _denoise(m, eps=1e-8):
+        s = self._entropy(v)
+        s_ = self._entropy(v_)
+        return v.shape[1] * (s_ - s)
+
+    
+        #TODO: run per column
+    def _denoise(self, m, eps=1.0e-8):
         """denoise magnetization"""
-      #  m[m < eps] = eps
+        m = np.maximum(m,eps)
+        m = np.minimum(m,1.0-eps)
         return m
 
 
-    def _free_energy(self, v):
+    def _free_energy_TAP(self, v):
         """Computes the TAP Free Energy F(v) to second order
         Parameters
         ----------
@@ -315,12 +395,10 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         h = self._mean_hiddens(v)
         mv, mh = self.equilibrate(v, h, iters=self.neq_steps)
         
-        #TODO: implement / test
-        #mv = self._denoise(mv)
-        #mh = self._denoise(mh)
+        mv = self._denoise(mv)
+        mh = self._denoise(mh)
 
         # sum over nodes: axis=1
-        print "mv mh W2 shapes", mv.shape, mh.shape, self.W2.shape
         
         U_naive = (-safe_sparse_dot(mv, self.v_bias) 
                     -safe_sparse_dot(mh, self.h_bias) 
@@ -331,18 +409,85 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
                    
         h_fluc = (mh - (mh*mh))
         v_fluc = (mv - (mv*mv))
+
+        # if we do it this way, we need to normalize by 1/batch_size 
+        # which we need to obtain from the W2 matrix
+        # (I think because of the double sum)
+        # this is not obvious in the paper...have to be very careful here
+        tap_norm = 1.0/float(mv.shape[0])
         dW_tap2 = h_fluc.dot(self.W2).dot(v_fluc.T)
-        
-        print "U_naive, Entropy, dW_tap2", U_naive.shape,Entropy.shape, dW_tap2.shape
 
-        Onsager = - (0.5 * dW_tap2).sum(axis=1)
-        
-
+        # julia way, does not require extra norm, but maybe slower ?
+        # dW_tap2 = h_fluc.dot(self.W2)*v_fluc
+        Onsager = -0.5*(dW_tap2).sum(axis=1)*tap_norm
         fe_tap = U_naive + Onsager - Entropy
 
         return fe_tap - fe
 
 
+    
+    def _free_energy(self, v):
+        """Computes the RBM Free Energy F(v) 
+        Parameters
+        ----------
+        v : array-like, shape (n_samples, n_features)
+            Values of the visible layer.
+        Returns
+        -------
+        free_energy : array-like, shape (n_samples,)
+            The value of the free energy.
+        """
+        fe = (- safe_sparse_dot(v, self.v_bias)
+                - np.logaddexp(0, safe_sparse_dot(v, self.W.T)
+                               + self.h_bias).sum(axis=1) )
+
+        return fe 
+    
+    
+    def _entropy(self, v):
+        """Computes the TAP Free Energy F(v) to second order
+        Parameters
+        ----------
+        v : array-like, shape (n_samples, n_features)
+            Values of the visible layer.
+        Returns
+        -------
+        entropy : array-like, shape (n_samples,)
+            The value of the entropy.
+        """
+         
+        h = self._mean_hiddens(v)
+        mv, mh = self.equilibrate(v, h, iters=self.neq_steps)
+
+        mv = self._denoise(mv)
+        mh = self._denoise(mh)
+
+        # appears to be wrong ?  unsure why ?  maybe because it is not denoised !!!
+        Entropy = ( -(mv*np.log(mv)+(1.0-mv)*np.log(1.0-mv)).sum(axis=1)  
+                    -(mh*np.log(mh)+(1.0-mh)*np.log(1.0-mh)).sum(axis=1)  )
+                         
+        return Entropy
+
+
+    
+    def _free_energy(self, v):
+        """Computes the RBM Free Energy F(v) 
+        Parameters
+        ----------
+        v : array-like, shape (n_samples, n_features)
+            Values of the visible layer.
+        Returns
+        -------
+        free_energy : array-like, shape (n_samples,)
+            The value of the free energy.
+        """
+        fe = (- safe_sparse_dot(v, self.v_bias)
+                - np.logaddexp(0, safe_sparse_dot(v, self.W.T)
+                               + self.h_bias).sum(axis=1) )
+
+        return fe 
+
+    
     def partial_fit(self, X, y=None):
         """Fit the model to the data X which should contain a partial
         segment of the data.
@@ -358,24 +503,24 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         X = check_array(X, accept_sparse='csr', dtype=np.float64)
         if not hasattr(self, 'random_state_'):
             self.random_state_ = check_random_state(self.random_state)
-        if not hasattr(self, 'components_'):
-            self.components_ = np.asarray(
+        if not hasattr(self, 'W'):
+            self.W = np.asarray(
                 self.random_state_.normal(
                     0,
                     0.01,
                     (self.n_components, X.shape[1])
                 ),
                 order='F')
-        if not hasattr(self, 'intercept_hidden_'):
+        if not hasattr(self, 'h_bias'):
             self.h_bias = np.zeros(self.n_components, )
-        if not hasattr(self, 'intercept_visible_'):
+        if not hasattr(self, 'v_bias'):
             self.v_bias = np.zeros(X.shape[1], )
 
         # not used ?
         #if not hasattr(self, 'h_samples_'):
         #    self.h_samples_ = np.zeros((self.batch_size, self.n_components))
 
-        self._fit(X, self.random_state_)
+        self._fit(X)
 
     def _fit(self, v_pos):
         """Inner fit for one mini-batch.
@@ -391,30 +536,36 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         decay = self.decay
 
         v_pos, h_pos, v_init, h_init = self.init_batch(X_batch)
+              
+        a = safe_sparse_dot(h_init, self.W) + self.v_bias
+        a = expit(a, out=a)
 
         # get_negative_samples
-        v_neg, h_neg = self.equilibrate(v_init, h_init, iters=rbm.neq_steps) 
-
+        v_neg, h_neg = self.equilibrate(v_init, h_init, iters=self.neq_steps) 
+        
         # basic gradient
         dW = self.weight_gradient(v_pos, h_pos ,v_neg, h_neg) 
 
         # regularization based on weight decay
         #  similar to momentum >
-        if rbm.weight_decay == "L2":
-            dW += decay * np.sign(self.W)
-        elif rbm.weight_decay == "L1":
-            dW += decay * self.W
+        if self.weight_decay == "L1":
+            dW -= decay * np.sign(self.W)
+        elif self.weight_decay == "L2":
+            dW -= decay * self.W
 
         # can we use BLAS here ?
         # momentum
         # note:  what do we do if lr changes per step ? not ready yet
         dW += self.momentum * self.dW_prev  
-
         # update
         self.W += lr * dW 
 
-        # for next iteration
+        # storage for next iteration
+
+        # is this is a memory killer 
         self.dW_prev =  dW  
+        
+        # is this wasteful...can we avoid storing 2X the W mat ?
         self.W2 = self.W*self.W
 
         # update bias terms
@@ -432,25 +583,29 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
             Training data.
         Returns
         -------
-        self : BernoulliRBM
+        self : EMF_RBM
             The fitted model.
         """
         verbose = self.verbose
         X = check_array(X, accept_sparse='csr', dtype=np.float64)
         self.random_state = check_random_state(self.random_state)
+        
+        self.init_weights(X)
+        
         n_samples = X.shape[0]
-        n_batches = int(np.ceil(float(n_samples) / rbm.batch_size))
+        n_batches = int(np.ceil(float(n_samples) / self.batch_size))
         
 
-        batch_slices = list(gen_even_slices(n_batches * rbm.batch_size,
+        batch_slices = list(gen_even_slices(n_batches * self.batch_size,
                                             n_batches, n_samples))
         
         begin = time.time()
         for iteration in xrange(1, self.n_iter + 1):
+            #print "iter ", iteration
             for batch_slice in batch_slices:
-                print ".",
                 self._fit(X[batch_slice])
 
+            #print "batches done"
             if verbose:
                 end = time.time()
                 print("[%s] Iteration %d, pseudo-likelihood = %.2f,"
@@ -460,3 +615,21 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
                 begin = end
 
         return self
+    
+    def transform(self, X):
+        """Compute the hidden layer activation probabilities, P(h=1|v=X).
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} shape (n_samples, n_features)
+            The data to be transformed.
+        Returns
+        -------
+        h : array, shape (n_samples, n_components)
+            Latent representations of the data.
+        """
+        check_is_fitted(self, "W")
+
+        X = check_array(X, accept_sparse='csr', dtype=np.float64)
+        return self._mean_hiddens(X)
+    
+    
