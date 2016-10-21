@@ -250,18 +250,32 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         # a = np.dot(h, self.W) + self.v_bias
         a = safe_sparse_dot(h, self.W) + self.v_bias
 
-        h_fluc = h-(h*h)
-        a += h_fluc.dot(self.W2)*(0.5-v)
-        #a += safe_sparse_dot(h_fluc,self.W2)*(0.5-v)
+        h_fluc = h-np.multiply(h,h)
+        #a += h_fluc.dot(self.W2)*(0.5-v)
+        
+        # 0.5-v is elementwise => dense
+        if issparse(v):
+            v_half = (0.5-v.todense())
+        else:
+             v_half = (0.5-v)
+            
+        a += np.multiply(safe_sparse_dot(h_fluc,self.W2), v_half)
         return expit(a, out=a)
 
     def mh_update(self, v, h):
         """update TAP hidden magnetizations, to second order"""
         a = safe_sparse_dot(v, self.W.T) + self.h_bias
+ 
+        v_fluc = (v-(np.multiply(v,v)))
+        #a += (v-v*v).dot((self.W2).T)*(0.5-h)
+        
+        if issparse(h):
+            h_half = (0.5-h.to_dense())
+        else:        
+            h_half = (0.5-h)
+            
+        a += np.multiply(safe_sparse_dot(v_fluc,self.W2.T),h_half)
 
-        v_fluc = (v-(v*v))
-        a += v_fluc.dot((self.W2).T)*(0.5-h)
-        #a += safe_sparse_dot(v_fluc,self.W2.T)*(0.5-h)
         return expit(a, out=a)
 
 
@@ -271,10 +285,11 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         dW = safe_sparse_dot(v_pos.T, h_pos, dense_output=True).T - np.dot(h_neg.T, v_neg)
         
         # tap2 correction
-        h_fluc = (h_neg - (h_neg*h_neg)).T
-        v_fluc = (v_neg - (v_neg*v_neg))
+        #  elementwise multiplies
+        h_fluc = (h_neg - np.multiply(h_neg,h_neg)).T
+        v_fluc = (v_neg - np.multiply(v_neg,v_neg))
         #  dW_tap2 = h_fluc.dot(v_fluc)*self.W
-        dW_tap2 = safe_sparse_dot(h_fluc,v_fluc)*self.W
+        dW_tap2 = np.multiply(safe_sparse_dot(h_fluc,v_fluc),self.W)
 
         dW -= dW_tap2
         return dW
@@ -537,7 +552,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
 
         v_pos, h_pos, v_init, h_init = self.init_batch(X_batch)
               
-        a = safe_sparse_dot(h_init, self.W) + self.v_bias
+        a = safe_sparse_dot(h_init, self.W, dense_output=True) + self.v_bias
         a = expit(a, out=a)
 
         # get_negative_samples
@@ -566,11 +581,15 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         self.dW_prev =  dW  
         
         # is this wasteful...can we avoid storing 2X the W mat ?
-        self.W2 = self.W*self.W
+        # elementwise multiply
+        self.W2 = np.multiply(self.W,self.W)
 
         # update bias terms
-        self.h_bias += lr * (h_pos.sum(axis=0) - h_neg.sum(axis=0))
-        self.v_bias += lr * (np.asarray(v_pos.sum(axis=0)).squeeze() - v_neg.sum(axis=0))
+        #   csr matrix sum is screwy, returns [[1,self.n_components]] 2-d array  
+        #   so I always use np.asarray(X.sum(axis=0)).squeeze()
+        #   although (I think) this could be optimized
+        self.v_bias += lr * (np.asarray(v_pos.sum(axis=0)).squeeze() - np.asarray(v_neg.sum(axis=0)).squeeze())
+        self.h_bias += lr * (np.asarray(h_pos.sum(axis=0)).squeeze() - np.asarray(h_neg.sum(axis=0)).squeeze())
 
         return 0
 
