@@ -1,41 +1,27 @@
 # emf-rbm
 Extended Mean Field Restricted Boltzmann Machine
 
-Goal:  to port the julia emf-rbm to python as a sci-kit learn RBM library
+This is a port of the julia sphinx emf-rbm 
 
-Code:  https://github.com/eric-tramel/Boltzmann.jl
+https://github.com/sphinxteam/Boltzmann.jl
 
 https://papers.nips.cc/paper/5788-training-restricted-boltzmann-machine-via-the-thouless-anderson-palmer-free-energy.pdf
 
-see also:
-https://github.com/dfdx/Boltzmann.jl/issues/9
+to python, in the style of the scikit learn RBM code.
+
+https://github.com/sphinxteam/Boltzmann.jl
 
 ##Getting Started
 
-Install Julia and check out the Bolztmann code listed above
+Run the notebook EMF_RBM_Test.ipynb
 
-Julia will be installed, by default, in
+The python class is emf_rbm.py, which can be included in other code
 
-~/.julia
 
-and the Boltzmann RBM package in
 
-~/.julia/v0.4/Boltzmann
 
-We need to run
 
-run `julia mnist_h5.jl`
 
-to generate the sample data sets for the notebook
 
-##Notebook
 
-Just run the notebook; I am current debugging and comparing the result to the julia mnistexample.jl output
 
-##TODO
-
-Testing and Evaluating the RBM
-
-see: https://www.quora.com/Is-there-any-other-dataset-except-MNIST-that-is-suitable-for-RBM-DBN-Since-Many-deep-learning-libraries-and-tutorials-use-only-MNIST-dataset-for-RBM
-
-The mnist_h5 data set has been normalized and binarized
