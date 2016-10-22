@@ -1,6 +1,11 @@
 # emf-rbm
 Extended Mean Field Restricted Boltzmann Machine
 
+As described in my blog
+
+https://charlesmartin14.wordpress.com/2016/10/21/improving-rbms-with-physical-chemistry/
+
+
 This is a port of the julia sphinx emf-rbm 
 
 https://github.com/sphinxteam/Boltzmann.jl
