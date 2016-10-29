@@ -10,7 +10,7 @@ function run_xdigits()
     println("norm X ",norm(X))
 
     # Set parameters
-    Epochs         = 2
+    Epochs         = 1
     BatchSize      = 100
     HiddenUnits    = 64
     Approx         = "tap2"
