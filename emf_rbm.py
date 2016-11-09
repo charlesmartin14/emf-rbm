@@ -1,4 +1,3 @@
-
 import time
 
 import numpy as np
@@ -74,7 +73,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
            random_state=None, verbose=0)
     References
     ----------
-    [1] Marylou Gabrie´, Eric W. Tramel1 and Florent Krzakala1, 
+    [1] Marylou Gabrie, Eric W. Tramel1 and Florent Krzakala1, 
         Training Restricted Boltzmann Machines via the Thouless-Anderson-Palmer Free Energy
         https://arxiv.org/pdf/1506.02914
     """
@@ -730,5 +729,4 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
 
         X = check_array(X, accept_sparse='csr', dtype=np.float64)
         return self._mean_hiddens(X)
-    
     
