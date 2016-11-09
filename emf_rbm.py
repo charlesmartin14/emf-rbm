@@ -1,3 +1,4 @@
+
 import time
 
 import numpy as np
@@ -73,7 +74,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
            random_state=None, verbose=0)
     References
     ----------
-    [1] Marylou Gabrie, Eric W. Tramel1 and Florent Krzakala1, 
+    [1] Marylou Gabrie´, Eric W. Tramel1 and Florent Krzakala1, 
         Training Restricted Boltzmann Machines via the Thouless-Anderson-Palmer Free Energy
         https://arxiv.org/pdf/1506.02914
     """
@@ -437,6 +438,8 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         #        - np.logaddexp(0, safe_sparse_dot(v, self.W.T)
         #                       + self.h_bias).sum(axis=1))
         
+        v = check_array(X, accept_sparse='csr')      
+            
         h = self._mean_hiddens(v)
         mv, mh = self.equilibrate(v, h, iters=self.neq_steps)
            
@@ -447,24 +450,25 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         
         U_naive = (-safe_sparse_dot(mv, self.v_bias) 
                     -safe_sparse_dot(mh, self.h_bias) 
-                        -(mv.dot(self.W.T)*(mh)).sum(axis=1))     
+                        -(mv.dot(self.W.T)*(mh)).sum(axis=1))
 
         Entropy = ( -(mv*np.log(mv)+(1.0-mv)*np.log(1.0-mv)).sum(axis=1)  
                     -(mh*np.log(mh)+(1.0-mh)*np.log(1.0-mh)).sum(axis=1) )
-                   
+           
         h_fluc = (mh - (mh*mh))
         v_fluc = (mv - (mv*mv))
 
         # if we do it this way, we need to normalize by 1/batch_size 
         # which we need to obtain from the W2 matrix
         # (I think because of the double sum)
-        # this is not obvious in the paper...have to be very careful here
-        tap_norm = 1.0/float(mv.shape[0])
-        dW_tap2 = h_fluc.dot(self.W2).dot(v_fluc.T)
-
+        # this is not obvious in the paper...have to be very careful here...too damn slow
+        #tap_norm = 1.0/float(mv.shape[0])
+        #dW_tap2 = h_fluc.dot(self.W2).dot(v_fluc.T)
+        # Onsager = (-0.5*dW_tap2).sum(axis=1)*tap_norm
+            
         # julia way, does not require extra norm, but maybe slower ?
-        # dW_tap2 = h_fluc.dot(self.W2)*v_fluc
-        Onsager = (-0.5*dW_tap2).sum(axis=1)*tap_norm
+        dW_tap2 = h_fluc.dot(self.W2)*v_fluc
+        Onsager = (-0.5*dW_tap2).sum(axis=1)
         fe_tap = U_naive + Onsager - Entropy
 
         return fe_tap, [Entropy, U_naive, Onsager]
@@ -624,45 +628,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         return 0
 
     
-    def fit_wEs(self, X, y=None):
-        """sams as Fit, but computes energies, free energies, and entropies on every step
-        """
-        U_energies = []
-        S_entropies = []
-        F_free_energies = []
-        
-        verbose = self.verbose
-        X = check_array(X, accept_sparse='csr', dtype=np.float64)
-        self.random_state = check_random_state(self.random_state)
-        
-        self.init_weights(X)
-        
-        n_samples = X.shape[0]
-        n_batches = int(np.ceil(float(n_samples) / self.batch_size))
-        
-
-        batch_slices = list(gen_even_slices(n_batches * self.batch_size,
-                                            n_batches, n_samples))
-        
-        begin = time.time()
-        for iteration in xrange(1, self.n_iter + 1):
-            
-            for batch_slice in batch_slices:
-                self._fit(X[batch_slice])
-
-            if verbose:
-                end = time.time()
-                print("[%s] Iteration %d, pseudo-likelihood = %.2f,"
-                      " time = %.2fs"
-                      % (type(self).__name__, iteration,
-                         self.score_samples(X).mean(), end - begin))
-                begin = end
-                
-            U_energies.append(np.mean(self._U_naive_TAP(X)))
-            S_entropies.append(np.mean(self._entropy(X)))
-            F_free_energies.append(np.mean(self._free_energy_TAP(X)))
-            
-        return self, U_energies, S_entropies, F_free_energies
+   
     
         
             
@@ -706,10 +672,12 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
                 begin = end
                 
             if monitor:
+                print "computing TAP Free Energies"
                 fe, s, u, o = self._free_energy_TAP(X)
                 self.free_energies.append(np.mean(fe))
                 self.entropies.append(np.mean(s))
                 self.mean_field_energies.append(np.mean(u))
+                print "monitor: ", np.mean(fe),  np.mean(s), np.mean(u)
             
         return self
     
@@ -729,4 +697,5 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
 
         X = check_array(X, accept_sparse='csr', dtype=np.float64)
         return self._mean_hiddens(X)
+    
     
