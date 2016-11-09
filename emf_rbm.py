@@ -392,6 +392,31 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         return m
 
 
+    def _U_naive_TAP(self, v):
+        """Computes the  Mean Field TAP Energy E(v) 
+        Parameters. This is also U_Naive in the TAP FE
+        ----------
+        v : array-like, shape (n_samples, n_features)
+            Values of the visible layer.
+        Returns
+        -------
+        U_naive : array-like, shape (n_samples,)
+            The value of the mean field component of the TAP free energy.
+        """
+        h = self._mean_hiddens(v)
+        mv, mh = self.equilibrate(v, h, iters=self.neq_steps)
+           
+        mv = self._denoise(mv)
+        mh = self._denoise(mh)
+    
+        # sum over nodes: axis=1
+        
+        U_naive = (-safe_sparse_dot(mv, self.v_bias) 
+                    -safe_sparse_dot(mh, self.h_bias) 
+                        -(mv.dot(self.W.T)*(mh)).sum(axis=1))         
+
+        return U_naive
+            
     def _free_energy_TAP(self, v):
         """Computes the TAP Free Energy F(v) to second order
         Parameters
@@ -403,16 +428,16 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         free_energy : array-like, shape (n_samples,)
             The value of the free energy.
         """
-        fe = (- safe_sparse_dot(v, self.v_bias)
-                - np.logaddexp(0, safe_sparse_dot(v, self.W.T)
-                               + self.h_bias).sum(axis=1))
+        #fe = (- safe_sparse_dot(v, self.v_bias)
+        #        - np.logaddexp(0, safe_sparse_dot(v, self.W.T)
+        #                       + self.h_bias).sum(axis=1))
         
         h = self._mean_hiddens(v)
         mv, mh = self.equilibrate(v, h, iters=self.neq_steps)
-        
+           
         mv = self._denoise(mv)
         mh = self._denoise(mh)
-
+    
         # sum over nodes: axis=1
         
         U_naive = (-safe_sparse_dot(mv, self.v_bias) 
@@ -434,16 +459,20 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
 
         # julia way, does not require extra norm, but maybe slower ?
         # dW_tap2 = h_fluc.dot(self.W2)*v_fluc
-        Onsager = -0.5*(dW_tap2).sum(axis=1)*tap_norm
+        Onsager = (-0.5*dW_tap2).sum(axis=1)*tap_norm
         fe_tap = U_naive + Onsager - Entropy
+        
+        print "S ", np.mean(Entropy)
+        print "U ", np.mean(U_naive)
+        print "O ", np.mean(Onsager)
 
-        return fe_tap - fe
+        return fe_tap 
 
 
     
     def _free_energy(self, v):
-        """Computes the RBM Free Energy F(v) 
-        Parameters
+        """Computes the RBM Free Energy F(v) Parameters.  
+        (No mean field h values necessary)
         ----------
         v : array-like, shape (n_samples, n_features)
             Values of the visible layer.
@@ -457,10 +486,10 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
                                + self.h_bias).sum(axis=1) )
 
         return fe 
-    
-    
+            
+
     def _entropy(self, v):
-        """Computes the TAP Free Energy F(v) to second order
+        """Computes the TAP Entropy (S) , from an equilibration step
         Parameters
         ----------
         v : array-like, shape (n_samples, n_features)
@@ -620,11 +649,9 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         
         begin = time.time()
         for iteration in xrange(1, self.n_iter + 1):
-            #print "iter ", iteration
             for batch_slice in batch_slices:
                 self._fit(X[batch_slice])
 
-            #print "batches done"
             if verbose:
                 end = time.time()
                 print("[%s] Iteration %d, pseudo-likelihood = %.2f,"
