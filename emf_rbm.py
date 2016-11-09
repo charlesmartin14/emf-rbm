@@ -79,7 +79,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         https://arxiv.org/pdf/1506.02914
     """
     def __init__(self, n_components=256, learning_rate=0.005, batch_size=100, sigma=0.001, neq_steps = 3,
-                 n_iter=20, verbose=0, random_state=None, momentum = 0.5, decay = 0.01, weight_decay='L1', thresh=1e-8):
+                 n_iter=20, verbose=0, random_state=None, momentum = 0.5, decay = 0.01, weight_decay='L1', thresh=1e-8, monitor=False):
         self.n_components = n_components
         self.learning_rate = learning_rate
         self.batch_size = batch_size
@@ -116,6 +116,12 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         self.dW_prev = None
         self.W2 = None
         self.v_bias = None
+        
+        # internal monitors: i would prefer callbacks
+        self.monitor = monitor
+        self.entropies = []
+        self.free_energies = []
+        self.mean_field_energies = []
         
 
     def init_weights(self, X):
@@ -418,8 +424,8 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         return U_naive
             
     def _free_energy_TAP(self, v):
-        """Computes the TAP Free Energy F(v) to second order
-        Parameters
+        """Computes the TAP Free Energy F(v) to second order Parameters
+        Also provides  values of components (energy, naive, Onsager term)
         ----------
         v : array-like, shape (n_samples, n_features)
             Values of the visible layer.
@@ -461,12 +467,8 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         # dW_tap2 = h_fluc.dot(self.W2)*v_fluc
         Onsager = (-0.5*dW_tap2).sum(axis=1)*tap_norm
         fe_tap = U_naive + Onsager - Entropy
-        
-        print "S ", np.mean(Entropy)
-        print "U ", np.mean(U_naive)
-        print "O ", np.mean(Onsager)
 
-        return fe_tap 
+        return fe_tap, [Entropy, U_naive, Onsager]
 
 
     
@@ -623,17 +625,13 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         return 0
 
     
-    def fit(self, X, y=None):
-        """Fit the model to the data X.
-        Parameters
-        ----------
-        X : {array-like, sparse matrix} shape (n_samples, n_features)
-            Training data.
-        Returns
-        -------
-        self : EMF_RBM
-            The fitted model.
+    def fit_wEs(self, X, y=None):
+        """sams as Fit, but computes energies, free energies, and entropies on every step
         """
+        U_energies = []
+        S_entropies = []
+        F_free_energies = []
+        
         verbose = self.verbose
         X = check_array(X, accept_sparse='csr', dtype=np.float64)
         self.random_state = check_random_state(self.random_state)
@@ -649,6 +647,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         
         begin = time.time()
         for iteration in xrange(1, self.n_iter + 1):
+            
             for batch_slice in batch_slices:
                 self._fit(X[batch_slice])
 
@@ -659,8 +658,62 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
                       % (type(self).__name__, iteration,
                          self.score_samples(X).mean(), end - begin))
                 begin = end
+                
+            U_energies.append(np.mean(self._U_naive_TAP(X)))
+            S_entropies.append(np.mean(self._entropy(X)))
+            F_free_energies.append(np.mean(self._free_energy_TAP(X)))
+            
+        return self, U_energies, S_entropies, F_free_energies
+    
+        
+            
+    def fit(self, X, y=None):
+        """Fit the model to the data X.
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} shape (n_samples, n_features)
+            Training data.
+        Returns
+        -------
+        self : EMF_RBM
+            The fitted model.
+        """
+        verbose = self.verbose
+        monitor = self.monitor
+        X = check_array(X, accept_sparse='csr', dtype=np.float64)
+        self.random_state = check_random_state(self.random_state)
+        
+        self.init_weights(X)
+        
+        n_samples = X.shape[0]
+        n_batches = int(np.ceil(float(n_samples) / self.batch_size))
+        
 
+        batch_slices = list(gen_even_slices(n_batches * self.batch_size,
+                                            n_batches, n_samples))
+        
+        begin = time.time()
+        for iteration in xrange(1, self.n_iter + 1):
+            
+            for batch_slice in batch_slices:
+                self._fit(X[batch_slice])
+
+            if verbose:
+                end = time.time()
+                print("[%s] Iteration %d, pseudo-likelihood = %.2f,"
+                      " time = %.2fs"
+                      % (type(self).__name__, iteration,
+                         self.score_samples(X).mean(), end - begin))
+                begin = end
+                
+            if monitor:
+                fe, s, u, o = self._free_energy_TAP(X)
+                self.free_energies.append(np.mean(fe))
+                self.entropies.append(np.mean(s))
+                self.mean_field_energies.append(np.mean(u))
+            
         return self
+    
     
     def transform(self, X):
         """Compute the hidden layer activation probabilities, P(h=1|v=X).
