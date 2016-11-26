@@ -74,7 +74,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
            random_state=None, verbose=0)
     References
     ----------
-    [1] Marylou Gabrie´, Eric W. Tramel1 and Florent Krzakala1, 
+    [1] Marylou Gabrie, Eric W. Tramel1 and Florent Krzakala1, 
         Training Restricted Boltzmann Machines via the Thouless-Anderson-Palmer Free Energy
         https://arxiv.org/pdf/1506.02914
     """
@@ -423,7 +423,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
 
         return U_naive
             
-    def _free_energy_TAP(self, v):
+    def _free_energy_TAP(self, X):
         """Computes the TAP Free Energy F(v) to second order Parameters
         Also provides  values of components (energy, naive, Onsager term)
         ----------
@@ -673,7 +673,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
                 
             if monitor:
                 print "computing TAP Free Energies"
-                fe, s, u, o = self._free_energy_TAP(X)
+                fe, [s, u, o] = self._free_energy_TAP(X)
                 self.free_energies.append(np.mean(fe))
                 self.entropies.append(np.mean(s))
                 self.mean_field_energies.append(np.mean(u))
