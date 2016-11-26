@@ -9,13 +9,13 @@ from scipy.io import loadmat
 
 
 def show_image(image): 
-    fig = pyplot.figure()
+    fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
     imgplot = ax.imshow(image, cmap=mpl.cm.Greys)
     imgplot.set_interpolation('nearest')
     ax.xaxis.set_ticks_position('top')
     ax.yaxis.set_ticks_position('left')
-    pyplot.show()
+    plt.show()
     
 
 def _get_datafolder_path():
