@@ -6,7 +6,6 @@ import matplotlib as mpl
 from matplotlib import pyplot as plt
 import gzip, zipfile, tarfile
 import os, shutil, re, string, urllib, fnmatch
-
 from scipy.io import loadmat
 
 
@@ -78,7 +77,6 @@ def _download_caltech(dataset):
                          f, protocol=cPkl.HIGHEST_PROTOCOL)
 
     
-
 def _download_mnist_realval(dataset):
     """
     Download the MNIST dataset if it is not present.
@@ -89,6 +87,7 @@ def _download_mnist_realval(dataset):
     )
     print('Downloading data from %s' % origin)
     urllib.urlretrieve(origin, dataset)
+
 
 def _download_omniglot_iwae(dataset):
     """
@@ -650,7 +649,6 @@ def load_svhn(
     return train_x, train_y, test_x, test_y
 
 
-
 def _download_svhn(dataset, extra):
     """
     Download the SVHN dataset
@@ -765,6 +763,7 @@ def _one_hot(x,n_labels=None):
     if n_labels is None:
         n_labels = np.max(x)
     return np.eye(n_labels)[x]
+
 
 def _download_and_extract_stl10(dest_directory):
     """
