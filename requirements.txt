@@ -1,0 +1,7 @@
+numpy
+scipy
+scikit-learn
+matplotlib
+pytest
+h5py
+nltk
