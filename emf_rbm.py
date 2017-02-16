@@ -1,4 +1,4 @@
-
+from __future__ import print_function
 import time
 
 import numpy as np
@@ -7,7 +7,6 @@ import scipy.sparse as sp
 
 from sklearn.base import BaseEstimator
 from sklearn.base import TransformerMixin
-from sklearn.externals.six.moves import xrange
 from sklearn.utils import check_array
 from sklearn.utils import check_random_state
 from sklearn.utils import gen_even_slices
@@ -16,6 +15,7 @@ from sklearn.utils.validation import check_is_fitted
 
 from sklearn.utils.fixes import expit  # logistic function  
 from sklearn.utils.extmath import safe_sparse_dot, log_logistic, softmax
+
 
 class EMF_RBM(BaseEstimator, TransformerMixin):
     """Extended Mean Field Restricted Boltzmann Machine (RBM).
@@ -123,7 +123,6 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         self.free_energies = []
         self.mean_field_energies = []
         
-
     def init_weights(self, X):
         """ If the user specifies the training dataset, it can be useful to                                                                                   
         initialize the visibile biases according to the empirical expected                                                                                
@@ -137,7 +136,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
 
         # Mean across  samples 
         if issparse(X):
-            probVis = csr_matrix.mean(X, axis=0)
+            probVis = sp.csr_matrix.mean(X, axis=0)
         else:
             probVis = np.mean(X,axis=0)            
 
@@ -162,7 +161,6 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         self.dW_prev = np.zeros_like(self.W)
         self.W2 = self.W*self.W
         return 0
-
 
     def sample_layer(self, layer):
         """Sample from the conditional distribution P(h|v) or P(v|h)"""
@@ -208,9 +206,9 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         v : array-like, shape (n_samples, n_features)
             Values of the visible layer.
         """
-        return sample_layer(self._mean_visible(h))
+        return self.sample_layer(self._mean_visible(h))
 
-    def _mean_visibles(self, h):
+    def _mean_visible(self, h):
         """Computes the conditional probabilities P(v=1|h).
         Parameters
         ----------
@@ -222,7 +220,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
             Values of the visible layer.     
         """
         #p = np.dot(h, self.W) + self.v_bias
-        p = safe_sparse_dot(h, W) + self.v_bias
+        p = safe_sparse_dot(h, self.W) + self.v_bias
         return expit(p, out=p)
 
     def sigma_means(self, x, b, W):
@@ -627,11 +625,6 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
 
         return 0
 
-    
-   
-    
-        
-            
     def fit(self, X, y=None):
         """Fit the model to the data X.
         Parameters
@@ -653,13 +646,11 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         n_samples = X.shape[0]
         n_batches = int(np.ceil(float(n_samples) / self.batch_size))
         
-
         batch_slices = list(gen_even_slices(n_batches * self.batch_size,
                                             n_batches, n_samples))
         
         begin = time.time()
-        for iteration in xrange(1, self.n_iter + 1):
-            
+        for iteration in range(1, self.n_iter + 1):
             for batch_slice in batch_slices:
                 self._fit(X[batch_slice])
 
@@ -672,12 +663,12 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
                 begin = end
                 
             if monitor:
-                print "computing TAP Free Energies"
+                print("computing TAP Free Energies")
                 fe, [s, u, o] = self._free_energy_TAP(X)
                 self.free_energies.append(np.mean(fe))
                 self.entropies.append(np.mean(s))
                 self.mean_field_energies.append(np.mean(u))
-                print "monitor: ", np.mean(fe),  np.mean(s), np.mean(u)
+                print("monitor: ", np.mean(fe),  np.mean(s), np.mean(u))
             
         return self
     
