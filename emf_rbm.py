@@ -138,13 +138,14 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         if issparse(X):
             probVis = sp.csr_matrix.mean(X, axis=0)
         else:
-            probVis = np.mean(X,axis=0)            
+            probVis = np.mean(X, axis=0)
 
         # safe for CSR / sparse mats ?
         # do we need it if we use softmax ?
-        probVis[probVis < eps] = eps            # Some regularization (avoid Inf/NaN)  
-        #probVis[probVis < (1.0-eps)] = (1.0-eps)   
-        self.v_bias = np.log(probVis / (1.0-probVis)) # Biasing as the log-proportion
+        probVis[probVis < eps] = eps # Some regularization (avoid Inf/NaN)
+        # probVis[probVis < (1.0-eps)] = (1.0-eps)
+        # Biasing as the log-proportion
+        self.v_bias = np.log(probVis / (1.0-probVis))
         
         # (does not work)
         # self.v_bias = softmax(probVis)
