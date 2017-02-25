@@ -1,10 +1,11 @@
-
+from __future__ import print_function
 import numpy as np
 import pickle as pkl
-import cPickle as cPkl
+from compat import pickle as cPkl
+import matplotlib as mpl
+from matplotlib import pyplot as plt
 import gzip, zipfile, tarfile
 import os, shutil, re, string, urllib, fnmatch
-
 from scipy.io import loadmat
 
 
@@ -23,12 +24,13 @@ def _get_datafolder_path():
     path = full_path +'/data'
     return path
 
+
 def _unpickle(f):
-    import cPickle
     fo = open(f, 'rb')
-    d = cPickle.load(fo)
+    d = cPkl.load(fo)
     fo.close()
     return d
+
 
 def _download_frey_faces(dataset):
     """
@@ -38,7 +40,7 @@ def _download_frey_faces(dataset):
     origin = (
         'http://www.cs.nyu.edu/~roweis/data/frey_rawface.mat'
     )
-    print 'Downloading data from %s' % origin
+    print('Downloading data from %s' % origin)
     urllib.urlretrieve(origin, dataset+'.mat')
     matdata = loadmat(dataset)
     f = gzip.open(dataset +'.pkl.gz', 'w')
@@ -53,12 +55,12 @@ def _download_caltech(dataset):
     origin = (
     'https://people.cs.umass.edu/~marlin/data/caltech101_silhouettes_28_split1.mat'
     )
-    print 'Downloading data from %s' % origin
-    print 'dataset.mat %s' % dataset
+    print('Downloading data from %s' % origin)
+    print('dataset.mat %s' % dataset)
 
     urllib.urlretrieve(origin, dataset)
     matdata = loadmat(dataset)
-    print "keys ",matdata.keys()
+    print("keys ", matdata.keys())
 
     train_x = matdata['train_data'].astype('float32')
     train_y = matdata['train_labels'].astype('int')
@@ -66,15 +68,15 @@ def _download_caltech(dataset):
     valid_y = matdata['val_labels'].astype('int')
     test_x = matdata['test_data'].astype('float32')
     test_y = matdata['test_labels'].astype('int')
-    print train_x.shape, train_y.shape, valid_x.shape, valid_y.shape, test_x.shape, test_y.shape
+    print(train_x.shape, train_y.shape, valid_x.shape,
+          valid_y.shape, test_x.shape, test_y.shape)
 
 
     with open(dataset +'.pkl', 'w') as f:
-                pkl.dump([train_x, train_y, valid_x, valid_y, test_x, test_y], f,
-                         protocol=cPkl.HIGHEST_PROTOCOL)
+                pkl.dump([train_x, train_y, valid_x, valid_y, test_x, test_y],
+                         f, protocol=cPkl.HIGHEST_PROTOCOL)
 
     
-
 def _download_mnist_realval(dataset):
     """
     Download the MNIST dataset if it is not present.
@@ -83,8 +85,9 @@ def _download_mnist_realval(dataset):
     origin = (
         'http://www.iro.umontreal.ca/~lisa/deep/data/mnist/mnist.pkl.gz'
     )
-    print 'Downloading data from %s' % origin
+    print('Downloading data from %s' % origin)
     urllib.urlretrieve(origin, dataset)
+
 
 def _download_omniglot_iwae(dataset):
     """
@@ -95,7 +98,7 @@ def _download_omniglot_iwae(dataset):
         'https://github.com/yburda/iwae/raw/'
         'master/datasets/OMNIGLOT/chardata.mat'
     )
-    print 'Downloading data from %s' % origin
+    print('Downloading data from %s' % origin)
     urllib.urlretrieve(origin, dataset + '/chardata.mat')
 
 
@@ -103,7 +106,7 @@ def _download_norb_small(dataset):
     """
     Download the Norb dataset
     """
-    print 'Downloading small resized norb data'
+    print('Downloading small resized norb data')
 
     urllib.urlretrieve('http://dl.dropbox.com/u/13294233/smallnorb/smallnorb-'
                        '5x46789x9x18x6x2x32x32-training-dat-matlab-bicubic.mat',
@@ -139,7 +142,7 @@ def _download_rotten_tomatoes(dataset):
     origin = ('http://www.cs.cornell.edu/people/pabo/'
               'movie-review-data/rt-polaritydata.tar.gz')
 
-    print 'Downloading data from %s' % origin
+    print('Downloading data from %s' % origin)
     urllib.urlretrieve(origin, dataset + '/rt-polaritydata.tar.gz')
 
 
@@ -186,9 +189,9 @@ def _download_omniglot(dataset):
         "https://github.com/brendenlake/omniglot/"
         "raw/master/python/images_background.zip"
     )
-    print 'Downloading data from %s' % origin_eval
+    print('Downloading data from %s' % origin_eval)
     urllib.urlretrieve(origin_eval, dataset + '/images_evaluation.zip')
-    print 'Downloading data from %s' % origin_back
+    print('Downloading data from %s' % origin_back)
     urllib.urlretrieve(origin_back, dataset + '/images_background.zip')
 
     with zipfile.ZipFile(dataset + '/images_evaluation.zip', "r") as z:
@@ -259,7 +262,7 @@ def _download_mnist_binarized(datapath):
     }
     datasplits = {}
     for split in datafiles.keys():
-        print "Downloading %s data..." %(split)
+        print("Downloading %s data..." %(split))
         local_file = datapath + '/binarized_mnist_%s.npy'%(split)
         datasplits[split] = np.loadtxt(urllib.urlretrieve(datafiles[split])[0])
 
@@ -375,9 +378,9 @@ def _download_rcv1():
     :return: The train, test and validation set.
     """
     from sklearn.datasets import fetch_rcv1
-    print "downloading rcv1 train data...."
+    print("downloading rcv1 train data....")
     newsgroups_train = fetch_rcv1(subset='train')
-    print "downloading rcv1 test data...."
+    print("downloading rcv1 test data....")
     newsgroups_test = fetch_rcv1(subset='test')
     train_set = (newsgroups_train.data, newsgroups_train.target)
     test_set = (newsgroups_test.data, newsgroups_test.target)
@@ -391,10 +394,10 @@ def _download_20newsgroup():
     :return: The train, test and validation set.
     """
     from sklearn.datasets import fetch_20newsgroups
-    print "downloading 20 newsgroup train data...."
+    print("downloading 20 newsgroup train data....")
     newsgroups_train = fetch_20newsgroups(
         subset='train', remove=('headers', 'footers', 'quotes'))
-    print "downloading 20 newsgroup test data...."
+    print("downloading 20 newsgroup test data....")
     newsgroups_test = fetch_20newsgroups(
         subset='test', remove=('headers', 'footers', 'quotes'))
     train_set = (newsgroups_train.data, newsgroups_train.target)
@@ -458,7 +461,7 @@ def _download_cifar10(dataset):
     origin = (
         'http://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
     )
-    print 'Downloading data from %s' % origin
+    print('Downloading data from %s' % origin)
     urllib.urlretrieve(origin, dataset)
 
 
@@ -646,31 +649,30 @@ def load_svhn(
     return train_x, train_y, test_x, test_y
 
 
-
 def _download_svhn(dataset, extra):
     """
     Download the SVHN dataset
     """
-    print 'Downloading data from http://ufldl.stanford.edu/housenumbers/, ' \
-          'this may take a while...'
+    print('Downloading data from http://ufldl.stanford.edu/housenumbers/, ' \
+          'this may take a while...')
     if extra:
-        print "Downloading extra data..."
+        print("Downloading extra data...")
         urllib.urlretrieve('http://ufldl.stanford.edu/housenumbers/extra_32x32.mat',
                            dataset+'extra_32x32.mat')
         extra = loadmat(dataset+'extra_32x32.mat')
         extra_x = extra['X'].swapaxes(2,3).swapaxes(1,2).swapaxes(0,1)
         extra_y = extra['y'].reshape((-1)) - 1
 
-        print "Saving extra data"
+        print("Saving extra data")
         with open(dataset +'svhn_extra.cpkl', 'w') as f:
             pkl.dump([extra_x,extra_y],f,protocol=cPkl.HIGHEST_PROTOCOL)
         os.remove(dataset+'extra_32x32.mat')
 
     else:
-        print "Downloading train data..."
+        print("Downloading train data...")
         urllib.urlretrieve('http://ufldl.stanford.edu/housenumbers/train_32x32.mat',
                            dataset+'train_32x32.mat')
-        print "Downloading test data..."
+        print("Downloading test data...")
         urllib.urlretrieve('http://ufldl.stanford.edu/housenumbers/test_32x32.mat',
                            dataset+'test_32x32.mat')
 
@@ -681,20 +683,14 @@ def _download_svhn(dataset, extra):
         test_x = test['X'].swapaxes(2,3).swapaxes(1,2).swapaxes(0,1)
         test_y = test['y'].reshape((-1)) - 1
 
-        print "Saving train data"
+        print("Saving train data")
         with open(dataset +'svhn_train.cpkl', 'w') as f:
             cPkl.dump([train_x,train_y],f,protocol=cPkl.HIGHEST_PROTOCOL)
-        print "Saving test data"
+        print("Saving test data")
         with open(dataset +'svhn_test.cpkl', 'w') as f:
             pkl.dump([test_x,test_y],f,protocol=cPkl.HIGHEST_PROTOCOL)
         os.remove(dataset+'train_32x32.mat')
         os.remove(dataset+'test_32x32.mat')
-
-
-
-
-
-
 
     # helper function for converting chars to matrix format
     def create_matrix(reviews, y_cls):
@@ -721,13 +717,13 @@ def _download_svhn(dataset, extra):
     y = np.concatenate([y_pos, y_neg], axis=0)
     mask = np.concatenate([mask_pos, mask_neg])
 
-    print "-"*40
-    print "Minium length filter :", minimum_len
-    print "Maximum length filter:", maximum_len
+    print("-"*40)
+    print("Minium length filter :", minimum_len)
+    print("Maximum length filter:", maximum_len)
     if minimum_len is not None:
         seq_lens = mask.sum(axis=1)
         keep = seq_lens >= minimum_len
-        print "Seqs below minimum   : %i" % np.invert(keep).sum()
+        print("Seqs below minimum   : %i" % np.invert(keep).sum())
         X = X[keep, :]
         y = y[keep]
         mask = mask[keep, :]
@@ -735,7 +731,7 @@ def _download_svhn(dataset, extra):
     if maximum_len is not None:
         seq_lens = mask.sum(axis=1)
         keep = seq_lens <= maximum_len
-        print "Seqs above maximum   : %i" % np.invert(keep).sum()
+        print("Seqs above maximum   : %i" % np.invert(keep).sum())
         X = X[keep, :]
         y = y[keep]
         mask = mask[keep, :]
@@ -747,14 +743,14 @@ def _download_svhn(dataset, extra):
     mask = mask[p]
 
     seq_lens = mask.sum(axis=1).astype('int32')
-    print "X                    :", X.shape, X.dtype
-    print "y                    :", y.shape, y.dtype
-    print "mask                 :", mask.shape, mask.dtype
-    print "MIN length           : ", seq_lens.min()
-    print "MAX length           : ", seq_lens.max()
-    print "MEAN length          : ", seq_lens.mean()
-    print "UNKOWN chars         : ", np.sum(X==unk_idx)
-    print "-"*40
+    print("X                    :", X.shape, X.dtype)
+    print("y                    :", y.shape, y.dtype)
+    print("mask                 :", mask.shape, mask.dtype)
+    print("MIN length           : ", seq_lens.min())
+    print("MAX length           : ", seq_lens.max())
+    print("MEAN length          : ", seq_lens.mean())
+    print("UNKOWN chars         : ", np.sum(X==unk_idx))
+    print("-"*40)
 
     # check that idx's in X is the number of vocab_size + unk_idx
     n = vocab_size if isinstance(vocab_size, int) else len(vocab_size)
@@ -767,6 +763,7 @@ def _one_hot(x,n_labels=None):
     if n_labels is None:
         n_labels = np.max(x)
     return np.eye(n_labels)[x]
+
 
 def _download_and_extract_stl10(dest_directory):
     """
@@ -819,21 +816,21 @@ def load_stl10(
                          'Create an iterator that dequantifies on the fly')
 
     def read_all_images(path_to_data):
-        print "Loading %s" % path_to_data,
+        print("Loading %s" % path_to_data,)
         with open(path_to_data, 'rb') as f:
             # read whole file in uint8 chunks
             everything = np.fromfile(f, dtype=np.uint8)
             images = np.reshape(everything, (-1, 3, 96, 96))
             images = np.transpose(images, (0, 1, 3, 2))
-            print "shp", images.shape, "dtype", images.dtype
+            print("shp", images.shape, "dtype", images.dtype)
             return images
 
     def read_labels(path_to_labels):
-        print "Loading %s" % path_to_labels,
+        print("Loading %s" % path_to_labels)
         with open(path_to_labels, 'rb') as f:
             labels = np.fromfile(f, dtype=np.uint8)
             labels -= 1 # from 1...10 to 0...9
-            print "shp", labels.shape, "dtype", labels.dtype
+            print("shp", labels.shape, "dtype", labels.dtype)
         return labels
 
     datasetfolder = os.path.dirname(dataset)
