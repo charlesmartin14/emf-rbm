@@ -4,7 +4,6 @@ import time
 import numpy as np
 import scipy.sparse as sp
 
-
 from sklearn.base import BaseEstimator
 from sklearn.base import TransformerMixin
 from sklearn.utils import check_array
@@ -12,7 +11,6 @@ from sklearn.utils import check_random_state
 from sklearn.utils import gen_even_slices
 from sklearn.utils import issparse
 from sklearn.utils.validation import check_is_fitted
-
 from sklearn.utils.fixes import expit  # logistic function  
 from sklearn.utils.extmath import safe_sparse_dot, log_logistic, softmax
 
@@ -75,11 +73,14 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
     References
     ----------
     [1] Marylou Gabrie, Eric W. Tramel1 and Florent Krzakala1, 
-        Training Restricted Boltzmann Machines via the Thouless-Anderson-Palmer Free Energy
+        Training Restricted Boltzmann Machines via the
+        Thouless-Anderson-Palmer Free Energy
         https://arxiv.org/pdf/1506.02914
     """
-    def __init__(self, n_components=256, learning_rate=0.005, batch_size=100, sigma=0.001, neq_steps = 3,
-                 n_iter=20, verbose=0, random_state=None, momentum = 0.5, decay = 0.01, weight_decay='L1', thresh=1e-8, monitor=False):
+    def __init__(self, n_components=256, learning_rate=0.005, batch_size=100,
+                 sigma=0.001, neq_steps=3, n_iter=20, verbose=0,
+                 random_state=None, momentum=0.5, decay=0.01,
+                 weight_decay='L1', thresh=1e-8, monitor=False):
         self.n_components = n_components
         self.learning_rate = learning_rate
         self.batch_size = batch_size
@@ -220,7 +221,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
          v : array-like, shape (n_samples, n_features)
             Values of the visible layer.     
         """
-        #p = np.dot(h, self.W) + self.v_bias
+        # p = np.dot(h, self.W) + self.v_bias
         p = safe_sparse_dot(h, self.W) + self.v_bias
         return expit(p, out=p)
 
@@ -287,7 +288,8 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
     def weight_gradient(self, v_pos, h_pos ,v_neg, h_neg):
         """compute weight gradient of the TAP Free Energy, to second order"""
         # naive  / mean field
-        dW = safe_sparse_dot(v_pos.T, h_pos, dense_output=True).T - np.dot(h_neg.T, v_neg)
+        dW = safe_sparse_dot(v_pos.T, h_pos, dense_output=True).T - \
+             np.dot(h_neg.T, v_neg)
         
         # tap2 correction
         #  elementwise multiplies
@@ -472,8 +474,6 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
 
         return fe_tap, [Entropy, U_naive, Onsager]
 
-
-    
     def _free_energy(self, v):
         """Computes the RBM Free Energy F(v) Parameters.  
         (No mean field h values necessary)
@@ -486,11 +486,10 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
             The value of the free energy.
         """
         fe = (- safe_sparse_dot(v, self.v_bias)
-                - np.logaddexp(0, safe_sparse_dot(v, self.W.T)
-                               + self.h_bias).sum(axis=1) )
+              - np.logaddexp(0, safe_sparse_dot(v, self.W.T)
+              + self.h_bias).sum(axis=1))
 
-        return fe 
-            
+        return fe
 
     def _entropy(self, v):
         """Computes the TAP Entropy (S) , from an equilibration step
@@ -516,26 +515,6 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
                          
         return Entropy
 
-
-    
-    def _free_energy(self, v):
-        """Computes the RBM Free Energy F(v) 
-        Parameters
-        ----------
-        v : array-like, shape (n_samples, n_features)
-            Values of the visible layer.
-        Returns
-        -------
-        free_energy : array-like, shape (n_samples,)
-            The value of the free energy.
-        """
-        fe = (- safe_sparse_dot(v, self.v_bias)
-                - np.logaddexp(0, safe_sparse_dot(v, self.W.T)
-                               + self.h_bias).sum(axis=1) )
-
-        return fe 
-
-    
     def partial_fit(self, X, y=None):
         """Fit the model to the data X which should contain a partial
         segment of the data.
@@ -621,8 +600,10 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         #   csr matrix sum is screwy, returns [[1,self.n_components]] 2-d array  
         #   so I always use np.asarray(X.sum(axis=0)).squeeze()
         #   although (I think) this could be optimized
-        self.v_bias += lr * (np.asarray(v_pos.sum(axis=0)).squeeze() - np.asarray(v_neg.sum(axis=0)).squeeze())
-        self.h_bias += lr * (np.asarray(h_pos.sum(axis=0)).squeeze() - np.asarray(h_neg.sum(axis=0)).squeeze())
+        self.v_bias += lr * (np.asarray(v_pos.sum(axis=0)).squeeze() -
+                             np.asarray(v_neg.sum(axis=0)).squeeze())
+        self.h_bias += lr * (np.asarray(h_pos.sum(axis=0)).squeeze() -
+                             np.asarray(h_neg.sum(axis=0)).squeeze())
 
         return 0
 
@@ -649,7 +630,7 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         
         batch_slices = list(gen_even_slices(n_batches * self.batch_size,
                                             n_batches, n_samples))
-        
+
         begin = time.time()
         for iteration in range(1, self.n_iter + 1):
             for batch_slice in batch_slices:
@@ -672,7 +653,6 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
                 print("monitor: ", np.mean(fe),  np.mean(s), np.mean(u))
             
         return self
-    
     
     def transform(self, X):
         """Compute the hidden layer activation probabilities, P(h=1|v=X).
