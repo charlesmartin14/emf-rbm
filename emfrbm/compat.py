@@ -9,5 +9,7 @@ PY3 = (sys.version_info[0] == 3)
 
 if PY3:
     import pickle
+    from urllib.request import urlretrieve
 else:
     import cPickle as pickle
+    from urllib import urlretrieve

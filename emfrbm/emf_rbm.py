@@ -666,5 +666,3 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
 
         X = check_array(X, accept_sparse='csr', dtype=np.float64)
         return self._mean_hiddens(X)
-    
-    
