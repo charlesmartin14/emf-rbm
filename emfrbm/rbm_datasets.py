@@ -1,15 +1,25 @@
 from __future__ import print_function
-import numpy as np
+
+import fnmatch
+import gzip
+import os
 import pickle as pkl
-from compat import pickle as cPkl
+import re
+import shutil
+import string
+import tarfile
+import urllib
+import zipfile
+
 import matplotlib as mpl
+import numpy as np
 from matplotlib import pyplot as plt
-import gzip, zipfile, tarfile
-import os, shutil, re, string, urllib, fnmatch
 from scipy.io import loadmat
 
+from emfrbm.compat import pickle as cPkl
 
-def show_image(image): 
+
+def show_image(image):
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
     imgplot = ax.imshow(image, cmap=mpl.cm.Greys)

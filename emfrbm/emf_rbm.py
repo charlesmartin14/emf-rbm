@@ -284,7 +284,6 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
 
         return expit(a, out=a)
 
-
     def weight_gradient(self, v_pos, h_pos ,v_neg, h_neg):
         """compute weight gradient of the TAP Free Energy, to second order"""
         # naive  / mean field
@@ -326,7 +325,6 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
         fe_ = self._free_energy(v_)
         return v.shape[1] * log_logistic(fe_ - fe)
     
-    
     def score_samples_TAP(self, X):
         """Compute the pseudo-likelihood of X using second order TAP
         Parameters
@@ -364,7 +362,6 @@ class EMF_RBM(BaseEstimator, TransformerMixin):
             v_ = v.copy()
             v_[ind] = 1 - v_[ind]
         return v, v_
-    
     
     def score_samples_entropy(self, X):
         """Compute the entropy of X
