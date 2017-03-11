@@ -58,9 +58,10 @@ setup(
         'numpy >= 1.9.2',
         'scipy',
         'scikit-learn',
-        'matplotlib',
+        'matplotlib == 1.5.1',
         'h5py',
         'nltk'
+        'pandas'
     ],
     extras_require={
         'dev': [
