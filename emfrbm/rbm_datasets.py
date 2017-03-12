@@ -3,7 +3,6 @@ from __future__ import print_function
 import fnmatch
 import gzip
 import os
-import pickle as pkl
 import re
 import shutil
 import string
@@ -14,8 +13,7 @@ import matplotlib as mpl
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.io import loadmat
-
-from emfrbm.compat import pickle as cPkl, urlretrieve
+from emfrbm.compat import pickle as cPkl, urlretrieve, pkl_load
 
 
 def show_image(image):
@@ -36,7 +34,7 @@ def _get_datafolder_path():
 
 def _unpickle(f):
     fo = open(f, 'rb')
-    d = cPkl.load(fo)
+    d = pkl_load(fo)
     fo.close()
     return d
 
@@ -53,7 +51,7 @@ def _download_frey_faces(dataset):
     urlretrieve(origin, dataset+'.mat')
     matdata = loadmat(dataset)
     f = gzip.open(dataset +'.pkl.gz', 'w')
-    pkl.dump([matdata['ff'].T],f)
+    cPkl.dump([matdata['ff'].T],f)
     
     
 def _download_caltech(dataset):
@@ -80,10 +78,9 @@ def _download_caltech(dataset):
     print(train_x.shape, train_y.shape, valid_x.shape,
           valid_y.shape, test_x.shape, test_y.shape)
 
-
     with open(dataset +'.pkl', 'w') as f:
-                pkl.dump([train_x, train_y, valid_x, valid_y, test_x, test_y],
-                         f, protocol=cPkl.HIGHEST_PROTOCOL)
+                cPkl.dump([train_x, train_y, valid_x, valid_y, test_x, test_y],
+                          f, protocol=cPkl.HIGHEST_PROTOCOL)
 
     
 def _download_mnist_realval(dataset):
@@ -171,7 +168,7 @@ def load_norb_small(
         _download_norb_small(datasetfolder)
 
     with open(dataset,'r') as f:
-        train_x, train_t, test_x, test_t = cPkl.load(f)
+        train_x, train_t, test_x, test_t = pkl_load(f)
 
     if dequantify:
         train_x += np.random.uniform(0,1,size=train_x.shape).astype('float32')
@@ -276,7 +273,7 @@ def _download_mnist_binarized(datapath):
         datasplits[split] = np.loadtxt(urlretrieve(datafiles[split])[0])
 
     f = gzip.open(datapath +'/mnist.pkl.gz', 'w')
-    pkl.dump([datasplits['train'],datasplits['valid'],datasplits['test']],f)
+    cPkl.dump([datasplits['train'],datasplits['valid'],datasplits['test']],f)
 
 
 
@@ -291,7 +288,7 @@ def load_omniglot(dataset=_get_datafolder_path()+'/omniglot'):
         _download_omniglot(dataset)
 
     with open(dataset+'/omniglot.cpkl', 'rb') as f:
-        train, test = cPkl.load(f)
+        train, test = pkl_load(f)
 
     train = train.astype('float32')
     test = test.astype('float32')
@@ -336,7 +333,7 @@ def load_caltech_silhouettes(
         _download_caltech(dataset)
 
     with open(dataset+'.pkl','r') as f:
-        train_x, train_y, valid_x, valid_y, test_x, test_y = pkl.load(f)
+        train_x, train_y, valid_x, valid_y, test_x, test_y = pkl_load(f)
 
     return train_x, train_y, valid_x, valid_y, test_x, test_y 
 
@@ -355,7 +352,7 @@ def load_mnist_realval(
         _download_mnist_realval(dataset)
 
     f = gzip.open(dataset, 'rb')
-    train_set, valid_set, test_set = pkl.load(f)
+    train_set, valid_set, test_set = pkl_load(f)
     f.close()
     x_train, targets_train = train_set[0], train_set[1]
     x_valid, targets_valid = valid_set[0], valid_set[1]
@@ -377,7 +374,7 @@ def load_mnist_binarized(
         _download_mnist_binarized(datasetfolder)
 
     f = gzip.open(dataset, 'rb')
-    x_train, x_valid, x_test = pkl.load(f)
+    x_train, x_valid, x_test = pkl_load(f)
     f.close()
     return x_train, x_valid, x_test
 
@@ -501,7 +498,7 @@ def load_cifar10(
     train_x, train_y = [],[]
     for i in ['1','2','3','4','5']:
         with open(batch_folder + 'data_batch_'+ i,'r') as f:
-            data = cPkl.load(f)
+            data = pkl_load(f)
             train_x += [data['data']]
             train_y += [data['labels']]
     train_x = np.concatenate(train_x)
@@ -509,7 +506,7 @@ def load_cifar10(
 
 
     with open(batch_folder + 'test_batch','r') as f:
-        data = cPkl.load(f)
+        data = pkl_load(f)
         test_x = data['data']
         test_y = np.asarray(data['labels'])
 
@@ -554,7 +551,7 @@ def load_frey_faces(
                            datasetfolder + '/fixed_split.pkl')
 
     f = gzip.open(dataset+'.pkl.gz', 'rb')
-    data = pkl.load(f)[0].reshape(-1,28,20).astype('float32')
+    data = pkl_load(f)[0].reshape(-1,28,20).astype('float32')
     f.close()
     if dequantify:
         data = data + np.random.uniform(0,1,size=data.shape).astype('float32')
@@ -593,7 +590,7 @@ def load_lfw(
 
 
     f = gzip.open(dataset, 'rb')
-    data = cPkl.load(f)[0].astype('float32')
+    data = pkl_load(f)[0].astype('float32')
     f.close()
     if dequantify:
         data = data + np.random.uniform(0,1,size=data.shape).astype('float32')
@@ -625,9 +622,9 @@ def load_svhn(
         _download_svhn(dataset, extra=False)
 
     with open(dataset +'svhn_train.cpkl', 'rb') as f:
-        train_x,train_y = cPkl.load(f)
+        train_x,train_y = pkl_load(f)
     with open(dataset +'svhn_test.cpkl', 'rb') as f:
-        test_x,test_y = cPkl.load(f)
+        test_x,test_y = pkl_load(f)
 
     if extra:
         if not os.path.isfile(dataset +'svhn_extra.cpkl'):
@@ -637,7 +634,7 @@ def load_svhn(
             _download_svhn(dataset, extra=True)
 
         with open(dataset +'svhn_extra.cpkl', 'rb') as f:
-            extra_x,extra_y = cPkl.load(f)
+            extra_x,extra_y = pkl_load(f)
         train_x = np.concatenate([train_x,extra_x])
         train_y = np.concatenate([train_y,extra_y])
 
@@ -674,7 +671,7 @@ def _download_svhn(dataset, extra):
 
         print("Saving extra data")
         with open(dataset +'svhn_extra.cpkl', 'w') as f:
-            pkl.dump([extra_x,extra_y],f,protocol=cPkl.HIGHEST_PROTOCOL)
+            cPkl.dump([extra_x,extra_y],f,protocol=cPkl.HIGHEST_PROTOCOL)
         os.remove(dataset+'extra_32x32.mat')
 
     else:
@@ -697,7 +694,7 @@ def _download_svhn(dataset, extra):
             cPkl.dump([train_x,train_y],f,protocol=cPkl.HIGHEST_PROTOCOL)
         print("Saving test data")
         with open(dataset +'svhn_test.cpkl', 'w') as f:
-            pkl.dump([test_x,test_y],f,protocol=cPkl.HIGHEST_PROTOCOL)
+            cPkl.dump([test_x,test_y],f,protocol=cPkl.HIGHEST_PROTOCOL)
         os.remove(dataset+'train_32x32.mat')
         os.remove(dataset+'test_32x32.mat')
 

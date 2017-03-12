@@ -60,7 +60,7 @@ setup(
         'scikit-learn',
         'matplotlib == 1.5.1',
         'h5py',
-        'nltk'
+        'nltk',
         'pandas'
     ],
     extras_require={
