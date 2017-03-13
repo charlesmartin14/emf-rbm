@@ -1,10 +1,13 @@
 import sys
+
 import numpy as np
-from sklearn.datasets import load_digits
-from scipy.sparse import csr_matrix
 from numpy.testing import assert_almost_equal, assert_array_equal
+from scipy.sparse import csr_matrix
+from sklearn.datasets import load_digits
 from sklearn.preprocessing import Binarizer
-from emf_rbm import EMF_RBM
+
+from emfrbm.emf_rbm import EMF_RBM
+
 np.seterr(all='warn')
 
 Xdigits = load_digits().data

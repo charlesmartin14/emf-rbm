@@ -1,14 +1,14 @@
-import pytest
 import numpy as np
-from sklearn import linear_model, datasets, metrics, preprocessing
-from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline
-from sklearn.metrics import accuracy_score
-from sklearn.neural_network import BernoulliRBM
+import pytest
 from scipy.ndimage import convolve
+from sklearn import linear_model, datasets
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+from sklearn.neural_network import BernoulliRBM
+from sklearn.pipeline import Pipeline
 
-from emf_rbm import EMF_RBM
-from rbm_datasets import load_mnist_realval
+from emfrbm.emf_rbm import EMF_RBM
+from emfrbm.rbm_datasets import load_mnist_realval
 
 np.seterr(all='warn')
 

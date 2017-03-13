@@ -1,15 +1,22 @@
 from __future__ import print_function
-import numpy as np
-import pickle as pkl
-from compat import pickle as cPkl
+
+import fnmatch
+import gzip
+import os
+import re
+import shutil
+import string
+import tarfile
+import zipfile
+
 import matplotlib as mpl
+import numpy as np
 from matplotlib import pyplot as plt
-import gzip, zipfile, tarfile
-import os, shutil, re, string, urllib, fnmatch
 from scipy.io import loadmat
+from emfrbm.compat import pickle as cPkl, urlretrieve, pkl_load
 
 
-def show_image(image): 
+def show_image(image):
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
     imgplot = ax.imshow(image, cmap=mpl.cm.Greys)
@@ -27,7 +34,7 @@ def _get_datafolder_path():
 
 def _unpickle(f):
     fo = open(f, 'rb')
-    d = cPkl.load(fo)
+    d = pkl_load(fo)
     fo.close()
     return d
 
@@ -41,10 +48,10 @@ def _download_frey_faces(dataset):
         'http://www.cs.nyu.edu/~roweis/data/frey_rawface.mat'
     )
     print('Downloading data from %s' % origin)
-    urllib.urlretrieve(origin, dataset+'.mat')
+    urlretrieve(origin, dataset+'.mat')
     matdata = loadmat(dataset)
     f = gzip.open(dataset +'.pkl.gz', 'w')
-    pkl.dump([matdata['ff'].T],f)
+    cPkl.dump([matdata['ff'].T],f)
     
     
 def _download_caltech(dataset):
@@ -58,7 +65,7 @@ def _download_caltech(dataset):
     print('Downloading data from %s' % origin)
     print('dataset.mat %s' % dataset)
 
-    urllib.urlretrieve(origin, dataset)
+    urlretrieve(origin, dataset)
     matdata = loadmat(dataset)
     print("keys ", matdata.keys())
 
@@ -71,10 +78,9 @@ def _download_caltech(dataset):
     print(train_x.shape, train_y.shape, valid_x.shape,
           valid_y.shape, test_x.shape, test_y.shape)
 
-
     with open(dataset +'.pkl', 'w') as f:
-                pkl.dump([train_x, train_y, valid_x, valid_y, test_x, test_y],
-                         f, protocol=cPkl.HIGHEST_PROTOCOL)
+                cPkl.dump([train_x, train_y, valid_x, valid_y, test_x, test_y],
+                          f, protocol=cPkl.HIGHEST_PROTOCOL)
 
     
 def _download_mnist_realval(dataset):
@@ -86,7 +92,7 @@ def _download_mnist_realval(dataset):
         'http://www.iro.umontreal.ca/~lisa/deep/data/mnist/mnist.pkl.gz'
     )
     print('Downloading data from %s' % origin)
-    urllib.urlretrieve(origin, dataset)
+    urlretrieve(origin, dataset)
 
 
 def _download_omniglot_iwae(dataset):
@@ -99,7 +105,7 @@ def _download_omniglot_iwae(dataset):
         'master/datasets/OMNIGLOT/chardata.mat'
     )
     print('Downloading data from %s' % origin)
-    urllib.urlretrieve(origin, dataset + '/chardata.mat')
+    urlretrieve(origin, dataset + '/chardata.mat')
 
 
 def _download_norb_small(dataset):
@@ -108,17 +114,17 @@ def _download_norb_small(dataset):
     """
     print('Downloading small resized norb data')
 
-    urllib.urlretrieve('http://dl.dropbox.com/u/13294233/smallnorb/smallnorb-'
+    urlretrieve('http://dl.dropbox.com/u/13294233/smallnorb/smallnorb-'
                        '5x46789x9x18x6x2x32x32-training-dat-matlab-bicubic.mat',
                        dataset + '/smallnorb_train_x.mat')
-    urllib.urlretrieve('http://dl.dropbox.com/u/13294233/smallnorb/smallnorb-'
+    urlretrieve('http://dl.dropbox.com/u/13294233/smallnorb/smallnorb-'
                        '5x46789x9x18x6x2x96x96-training-cat-matlab.mat',
                        dataset + '/smallnorb_train_t.mat')
 
-    urllib.urlretrieve('http://dl.dropbox.com/u/13294233/smallnorb/smallnorb-'
+    urlretrieve('http://dl.dropbox.com/u/13294233/smallnorb/smallnorb-'
                        '5x01235x9x18x6x2x32x32-testing-dat-matlab-bicubic.mat',
                        dataset + '/smallnorb_test_x.mat')
-    urllib.urlretrieve('http://dl.dropbox.com/u/13294233/smallnorb/smallnorb-'
+    urlretrieve('http://dl.dropbox.com/u/13294233/smallnorb/smallnorb-'
                        '5x01235x9x18x6x2x96x96-testing-cat-matlab.mat',
                        dataset + '/smallnorb_test_t.mat')
 
@@ -143,7 +149,7 @@ def _download_rotten_tomatoes(dataset):
               'movie-review-data/rt-polaritydata.tar.gz')
 
     print('Downloading data from %s' % origin)
-    urllib.urlretrieve(origin, dataset + '/rt-polaritydata.tar.gz')
+    urlretrieve(origin, dataset + '/rt-polaritydata.tar.gz')
 
 
 def load_norb_small(
@@ -162,7 +168,7 @@ def load_norb_small(
         _download_norb_small(datasetfolder)
 
     with open(dataset,'r') as f:
-        train_x, train_t, test_x, test_t = cPkl.load(f)
+        train_x, train_t, test_x, test_t = pkl_load(f)
 
     if dequantify:
         train_x += np.random.uniform(0,1,size=train_x.shape).astype('float32')
@@ -190,9 +196,9 @@ def _download_omniglot(dataset):
         "raw/master/python/images_background.zip"
     )
     print('Downloading data from %s' % origin_eval)
-    urllib.urlretrieve(origin_eval, dataset + '/images_evaluation.zip')
+    urlretrieve(origin_eval, dataset + '/images_evaluation.zip')
     print('Downloading data from %s' % origin_back)
-    urllib.urlretrieve(origin_back, dataset + '/images_background.zip')
+    urlretrieve(origin_back, dataset + '/images_background.zip')
 
     with zipfile.ZipFile(dataset + '/images_evaluation.zip', "r") as z:
         z.extractall(dataset)
@@ -264,10 +270,10 @@ def _download_mnist_binarized(datapath):
     for split in datafiles.keys():
         print("Downloading %s data..." %(split))
         local_file = datapath + '/binarized_mnist_%s.npy'%(split)
-        datasplits[split] = np.loadtxt(urllib.urlretrieve(datafiles[split])[0])
+        datasplits[split] = np.loadtxt(urlretrieve(datafiles[split])[0])
 
     f = gzip.open(datapath +'/mnist.pkl.gz', 'w')
-    pkl.dump([datasplits['train'],datasplits['valid'],datasplits['test']],f)
+    cPkl.dump([datasplits['train'],datasplits['valid'],datasplits['test']],f)
 
 
 
@@ -282,7 +288,7 @@ def load_omniglot(dataset=_get_datafolder_path()+'/omniglot'):
         _download_omniglot(dataset)
 
     with open(dataset+'/omniglot.cpkl', 'rb') as f:
-        train, test = cPkl.load(f)
+        train, test = pkl_load(f)
 
     train = train.astype('float32')
     test = test.astype('float32')
@@ -327,7 +333,7 @@ def load_caltech_silhouettes(
         _download_caltech(dataset)
 
     with open(dataset+'.pkl','r') as f:
-        train_x, train_y, valid_x, valid_y, test_x, test_y = pkl.load(f)
+        train_x, train_y, valid_x, valid_y, test_x, test_y = pkl_load(f)
 
     return train_x, train_y, valid_x, valid_y, test_x, test_y 
 
@@ -346,7 +352,7 @@ def load_mnist_realval(
         _download_mnist_realval(dataset)
 
     f = gzip.open(dataset, 'rb')
-    train_set, valid_set, test_set = pkl.load(f)
+    train_set, valid_set, test_set = pkl_load(f)
     f.close()
     x_train, targets_train = train_set[0], train_set[1]
     x_valid, targets_valid = valid_set[0], valid_set[1]
@@ -368,7 +374,7 @@ def load_mnist_binarized(
         _download_mnist_binarized(datasetfolder)
 
     f = gzip.open(dataset, 'rb')
-    x_train, x_valid, x_test = pkl.load(f)
+    x_train, x_valid, x_test = pkl_load(f)
     f.close()
     return x_train, x_valid, x_test
 
@@ -462,7 +468,7 @@ def _download_cifar10(dataset):
         'http://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
     )
     print('Downloading data from %s' % origin)
-    urllib.urlretrieve(origin, dataset)
+    urlretrieve(origin, dataset)
 
 
 def load_cifar10(
@@ -492,7 +498,7 @@ def load_cifar10(
     train_x, train_y = [],[]
     for i in ['1','2','3','4','5']:
         with open(batch_folder + 'data_batch_'+ i,'r') as f:
-            data = cPkl.load(f)
+            data = pkl_load(f)
             train_x += [data['data']]
             train_y += [data['labels']]
     train_x = np.concatenate(train_x)
@@ -500,7 +506,7 @@ def load_cifar10(
 
 
     with open(batch_folder + 'test_batch','r') as f:
-        data = cPkl.load(f)
+        data = pkl_load(f)
         test_x = data['data']
         test_y = np.asarray(data['labels'])
 
@@ -539,13 +545,13 @@ def load_frey_faces(
         _download_frey_faces(dataset)
 
     if not os.path.isfile(datasetfolder + '/fixed_split.pkl'):
-        urllib.urlretrieve('https://raw.githubusercontent.com/casperkaae/'
+        urlretrieve('https://raw.githubusercontent.com/casperkaae/'
                            'extra_parmesan/master/data_splits/'
                            'frey_faces_fixed_split.pkl',
                            datasetfolder + '/fixed_split.pkl')
 
     f = gzip.open(dataset+'.pkl.gz', 'rb')
-    data = pkl.load(f)[0].reshape(-1,28,20).astype('float32')
+    data = pkl_load(f)[0].reshape(-1,28,20).astype('float32')
     f.close()
     if dequantify:
         data = data + np.random.uniform(0,1,size=data.shape).astype('float32')
@@ -577,14 +583,14 @@ def load_lfw(
         _download_lwf(dataset,size)
 
     if not os.path.isfile(datasetfolder + '/fixed_split.pkl'):
-        urllib.urlretrieve('https://raw.githubusercontent.com/casperkaae/'
+        urlretrieve('https://raw.githubusercontent.com/casperkaae/'
                            'extra_parmesan/master/data_splits/'
                            'lfw_fixed_split.pkl',
                            datasetfolder + '/fixed_split.pkl')
 
 
     f = gzip.open(dataset, 'rb')
-    data = cPkl.load(f)[0].astype('float32')
+    data = pkl_load(f)[0].astype('float32')
     f.close()
     if dequantify:
         data = data + np.random.uniform(0,1,size=data.shape).astype('float32')
@@ -616,9 +622,9 @@ def load_svhn(
         _download_svhn(dataset, extra=False)
 
     with open(dataset +'svhn_train.cpkl', 'rb') as f:
-        train_x,train_y = cPkl.load(f)
+        train_x,train_y = pkl_load(f)
     with open(dataset +'svhn_test.cpkl', 'rb') as f:
-        test_x,test_y = cPkl.load(f)
+        test_x,test_y = pkl_load(f)
 
     if extra:
         if not os.path.isfile(dataset +'svhn_extra.cpkl'):
@@ -628,7 +634,7 @@ def load_svhn(
             _download_svhn(dataset, extra=True)
 
         with open(dataset +'svhn_extra.cpkl', 'rb') as f:
-            extra_x,extra_y = cPkl.load(f)
+            extra_x,extra_y = pkl_load(f)
         train_x = np.concatenate([train_x,extra_x])
         train_y = np.concatenate([train_y,extra_y])
 
@@ -657,7 +663,7 @@ def _download_svhn(dataset, extra):
           'this may take a while...')
     if extra:
         print("Downloading extra data...")
-        urllib.urlretrieve('http://ufldl.stanford.edu/housenumbers/extra_32x32.mat',
+        urlretrieve('http://ufldl.stanford.edu/housenumbers/extra_32x32.mat',
                            dataset+'extra_32x32.mat')
         extra = loadmat(dataset+'extra_32x32.mat')
         extra_x = extra['X'].swapaxes(2,3).swapaxes(1,2).swapaxes(0,1)
@@ -665,15 +671,15 @@ def _download_svhn(dataset, extra):
 
         print("Saving extra data")
         with open(dataset +'svhn_extra.cpkl', 'w') as f:
-            pkl.dump([extra_x,extra_y],f,protocol=cPkl.HIGHEST_PROTOCOL)
+            cPkl.dump([extra_x,extra_y],f,protocol=cPkl.HIGHEST_PROTOCOL)
         os.remove(dataset+'extra_32x32.mat')
 
     else:
         print("Downloading train data...")
-        urllib.urlretrieve('http://ufldl.stanford.edu/housenumbers/train_32x32.mat',
+        urlretrieve('http://ufldl.stanford.edu/housenumbers/train_32x32.mat',
                            dataset+'train_32x32.mat')
         print("Downloading test data...")
-        urllib.urlretrieve('http://ufldl.stanford.edu/housenumbers/test_32x32.mat',
+        urlretrieve('http://ufldl.stanford.edu/housenumbers/test_32x32.mat',
                            dataset+'test_32x32.mat')
 
         train = loadmat(dataset+'train_32x32.mat')
@@ -688,7 +694,7 @@ def _download_svhn(dataset, extra):
             cPkl.dump([train_x,train_y],f,protocol=cPkl.HIGHEST_PROTOCOL)
         print("Saving test data")
         with open(dataset +'svhn_test.cpkl', 'w') as f:
-            pkl.dump([test_x,test_y],f,protocol=cPkl.HIGHEST_PROTOCOL)
+            cPkl.dump([test_x,test_y],f,protocol=cPkl.HIGHEST_PROTOCOL)
         os.remove(dataset+'train_32x32.mat')
         os.remove(dataset+'test_32x32.mat')
 
@@ -782,7 +788,7 @@ def _download_and_extract_stl10(dest_directory):
             sys.stdout.write('\rDownloading %s %.2f%%' % (filename,
                 float(count * block_size) / float(total_size) * 100.0))
             sys.stdout.flush()
-        filepath, _ = urllib.urlretrieve(origin, filepath, reporthook=_progress)
+        filepath, _ = urlretrieve(origin, filepath, reporthook=_progress)
         print('Downloaded', filename)
 
     binary_directory = os.path.join(dest_directory, 'stl10_binary')

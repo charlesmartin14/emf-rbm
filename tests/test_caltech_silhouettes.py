@@ -1,11 +1,12 @@
 import numpy as np
 from sklearn import linear_model
-from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score
 from sklearn.neural_network import BernoulliRBM
+from sklearn.pipeline import Pipeline
 
-from emf_rbm import EMF_RBM
-from rbm_datasets import load_caltech_silhouettes
+from emfrbm.emf_rbm import EMF_RBM
+from emfrbm.rbm_datasets import load_caltech_silhouettes
+
 np.seterr(all='warn')
 
 
