@@ -38,7 +38,8 @@ import matplotlib.pyplot as plt
 from scipy.ndimage import convolve
 from sklearn import linear_model, datasets, metrics
 from sklearn.model_selection import train_test_split
-from emfrbm.emf_rbm import EMF_RBM
+from sklearn.neural_network import BernoulliRBM
+from emf_rbm import EMF_RBM
 from sklearn.pipeline import Pipeline
 
 

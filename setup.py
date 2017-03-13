@@ -48,20 +48,20 @@ setup(
     author_email='basaks@gmail.com',
     url='https://github.com/charlesmartin14/emf-rbm',
     packages=['.'],
-    package_dir={'emf-rbm': 'emfrbm'},
+    package_dir={'emf-rbm': '.'},
     include_package_data=True,
     entry_points={
-        'console_scripts': []
+        'console_scripts': [
+        ]
     },
     setup_requires=[NUMPY_VERSION],
     install_requires=[
         'numpy >= 1.9.2',
         'scipy',
         'scikit-learn',
-        'matplotlib == 1.5.1',
+        'matplotlib',
         'h5py',
-        'nltk',
-        'pandas'
+        'nltk'
     ],
     extras_require={
         'dev': [
@@ -93,7 +93,7 @@ setup(
         "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
-        # "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.7",
         # add additional supported python versions
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",

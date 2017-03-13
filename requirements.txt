@@ -1,8 +1,7 @@
-numpy >= 1.9.2
+numpy
 scipy
 scikit-learn
-matplotlib == 1.5.1
+matplotlib
 pytest
 h5py
 nltk
-pandas
